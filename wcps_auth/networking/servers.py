@@ -132,9 +132,8 @@ async def query_game_servers(game_servers:list[GameServer]):
         try:
             print(f"Querying {server.address}")
             reader, writer = await asyncio.open_connection(server.address, server.port)
-            # writer.write(b"test")
             response = await reader.read(1024)
-           # writer.close()
+
             full_packet = InPacket(response, xor_key = InternalKeys.XOR_GAME_SEND)
             server.is_online = True
             server.max_players = full_packet.blocks[3]
