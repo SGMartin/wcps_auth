@@ -1,11 +1,26 @@
 import asyncio
 import datetime
+import socket
 import time 
 import threading
 
-from networking import get_server_list, get_servers_details, start_user_listener
+#from networking import get_server_list, get_servers_details, start_user_listener
 
-import asyncio, socket
+from networking import client_listener,  server_listener, get_server_list
+
+# Start the game server listener in its own thread
+def start_server_listener():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(server_listener())
+
+
+# Start the client listener in its own thread
+def start_client_listener():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(client_listener())
+
 
 def main():
     # Get the current date
@@ -13,27 +28,31 @@ def main():
     start_time = now.strftime("%d/%m/%Y")
     keep_running = True 
 
-    print(f"Authorization server started on {start_time}")
-    print(f"Fetching list of active servers...")
+    print("Client listener started.")
+    user_listener_thread = threading.Thread(target = start_client_listener)
+    user_listener_thread.start()
 
-    game_servers = get_server_list("root","root","auth_test")
+    print("Game server listener started.")
+    server_listener_thread = threading.Thread(target = start_server_listener)
+    server_listener_thread.start()
 
-    print(f"Found {len(game_servers)} server/s in the database.")
-    print("Begin listening for clients...")
-    client_listener_thread = threading.Thread(target=start_user_listener)
-    client_listener_thread.start()
-    
+    print("Retrieving game server master list...")
+    all_game_servers = get_server_list("root", "root", "auth_test")
+    print(f"Found {len(all_game_servers)} server/s to watch.")
+
     while(keep_running):
-        print("Querying server list for online game servers...")
-        game_server_updater = threading.Thread(target = get_servers_details, args = [game_servers])
-        game_server_updater.start()
-  
-        for server in game_servers:
-            if server.is_online:
-                print(f"Server is online with {server.current_players} current players")
+        print("Begin game server scan...")
 
-        time.sleep(30)
+        for server in all_game_servers:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                s.connect((server.address, server.port))
+            except:
+                print(f"Failed to connect to {server.address}:{server.port}")
+            finally:
+                s.close()
 
+        time.sleep(10)
 
 
 if __name__ == '__main__':
