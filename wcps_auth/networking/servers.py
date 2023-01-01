@@ -63,12 +63,13 @@ class GameServer:
         try:
             max_players = int(max_players)
             if max_players not in range(0, 3601):
-                # TODO: HANDLE THIS
+                self.disconnect()
                 print("max players must be in the 0-3600 range")
             else:
                 self._max_players = max_players
         except ValueError: 
             print("Cannot cast max players to int")
+            self.disconnect()
 
     @property
     def current_players(self):
@@ -79,12 +80,13 @@ class GameServer:
         try:
             players = int(players)
             if players not in range(0, self._max_players):
-                # TODO: handle this
                 print("Invalid current players.")
+                self.disconnect()
             else:
                 self._current_players = players
         except ValueError:
             print("Cannot cast current players to int")
+            self.disconnect()
     
 
     async def listen(self):
