@@ -15,7 +15,7 @@ class PacketHandler(abc.ABC):
     def __init__(self):
         self.in_packet = None
 
-    async def handle(self, packet_to_handle):
+    async def handle(self, packet_to_handle: wcps_core.packets.InPacket) -> None:
         self.in_packet = packet_to_handle
         receptor = packet_to_handle.receptor
 
@@ -30,18 +30,18 @@ class PacketHandler(abc.ABC):
     async def process(self, user_or_server):
         pass
 
-    def get_block(self, block_id: int):
+    def get_block(self, block_id: int) -> str:
         return self.in_packet.blocks[block_id]
 
 
 class LauncherHandler(PacketHandler):
-    async def process(self, receptor):
+    async def process(self, receptor) -> None:
         launch_packet = networking.packets.Launcher().build()
         asyncio.create_task(receptor.send(launch_packet))
 
 
 class ServerListHandler(PacketHandler):
-    async def process(self, user):
+    async def process(self, user: networking.users.User) -> None:
         input_id = self.get_block(2)
         input_pw = self.get_block(3)
         is_new_display_name = False
