@@ -18,6 +18,9 @@ async def start_listeners():
         print(f"Failed to bind to port {Ports.OTHER_SERVER}")
         return
 
-    async with client_server, server_listener:
-        # Await the serve_forever method to handle incoming connections
-        await asyncio.gather(client_server.serve_forever(), server_listener.serve_forever())
+    # Create tasks to run the servers in the background
+    client_server_task = asyncio.create_task(client_server.serve_forever())
+    server_listener_task = asyncio.create_task(server_listener.serve_forever())
+
+    # Wait for the tasks to complete
+    await asyncio.gather(client_server_task, server_listener_task)
