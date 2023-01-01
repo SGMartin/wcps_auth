@@ -92,7 +92,6 @@ class ServerListHandler(PacketHandler):
                         ).build()
                     )
                 )
-                return
             else:
                 # TODO: check if online and proceed
                 asyncio.create_task(
@@ -100,7 +99,6 @@ class ServerListHandler(PacketHandler):
                         networking.packets.ServerList(ErrorCodes.SUCCESS, user).build()
                     )
                 )
-                return
         else:
             asyncio.create_task(
                 user.send(
@@ -109,8 +107,6 @@ class ServerListHandler(PacketHandler):
                     ).build()
                 )
             )
-            return
-
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:
