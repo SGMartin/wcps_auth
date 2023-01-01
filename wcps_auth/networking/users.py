@@ -3,10 +3,11 @@ import asyncio
 from wcps_core.constants import Ports
 from wcps_core.packets import InPacket, OutPacket, Connection
 
-from .packets import Launcher, ClientXorKeys
+from .packets import ClientXorKeys
+from .handlers import get_handler_for_packet
 
 class User:
-    def __init__(self, reader:asyncio.StreamReader, writer:asyncio.StreamWriter):
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self.reader = reader
         self.writer = writer
         # Send a connection packet
@@ -15,7 +16,6 @@ class User:
 
         # Start the listen loop
         asyncio.create_task(self.listen())
-
 
     async def listen(self):
         while True:
@@ -27,10 +27,13 @@ class User:
                 self.disconnect()
                 break
             else:
-                decoded = InPacket(data, xor_key=ClientXorKeys.Recieve)
-                print(decoded.packet_id)
-                asyncio.create_task(self.send(Launcher().build()))
-                print("HANDLERS HERE!")
+                incoming_packet = InPacket(
+                    buffer=data, receptor=self, xor_key=ClientXorKeys.Recieve
+                )
+                if incoming_packet.decoded_buffer:
+                    handler = get_handler_for_packet(incoming_packet.packet_id)
+                    if handler:
+                        handler.handle(incoming_packet)
 
     async def send(self, buffer):
         try:
