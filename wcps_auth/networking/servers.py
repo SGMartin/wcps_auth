@@ -3,8 +3,7 @@ import asyncio
 from wcps_core.constants import ServerTypes, InternalKeys
 from wcps_core.packets import InPacket, OutPacket
 
-import mysql.connector
-
+import aiomysql
 
 class GameServer:
     def __init__(
@@ -111,44 +110,3 @@ class GameServer:
 
     def disconnect(self):
         self.writer.close()
-
-
-def generate_servers_addresses(query_results: list) -> list:
-
-    server_list = []
-    for candidate_server in query_results:
-        ## Each result is a tuple of 4 fields
-        server_id, addr, port, active = candidate_server
-        server_list.append((addr, port))
-
-    return server_list
-
-
-def get_server_list(user: str, password: str, database: str) -> list[GameServer]:
-    # Connect to the database
-    conn = mysql.connector.connect(
-        host="localhost", port=3306, user=user, password=password, database=database
-    )
-    try:
-        # Create a cursor
-        cursor = conn.cursor()
-
-        # Execute the query
-        query = "SELECT * FROM servers WHERE active = 1"
-        cursor.execute(query)
-
-        # Fetch the results
-        result = cursor.fetchall()
-
-        # Close the cursor
-        cursor.close()
-
-        all_servers = generate_servers_addresses(result)
-        return all_servers
-    except mysql.connector.Error as err:
-        # Print the error message and exit
-        print(f"An error occurred when executing the query: {err}")
-        return None
-    finally:
-        # Close the connection
-        conn.close()
