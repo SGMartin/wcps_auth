@@ -3,16 +3,17 @@ import asyncio
 from wcps_core.constants import Ports
 from wcps_core.packets import InPacket, OutPacket, Connection
 
-from .packets import ClientXorKeys
-from .handlers import get_handler_for_packet
-
-
+import networking.packets
+import networking.handlers
 class User:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self.reader = reader
         self.writer = writer
         # Send a connection packet
-        self._connection = Connection(xor_key=ClientXorKeys.Send).build()
+        self.xor_key_send = networking.packets.ClientXorKeys.Send
+        self.xor_key_recieve = networking.packets.ClientXorKeys.Recieve
+
+        self._connection = Connection(xor_key=self.xor_key_send).build()
         asyncio.create_task(self.send(self._connection))
 
         # Start the listen loop
@@ -28,10 +29,10 @@ class User:
                 break
             else:
                 incoming_packet = InPacket(
-                    buffer=data, receptor=self, xor_key=ClientXorKeys.Recieve
+                    buffer=data, receptor=self, xor_key=self.xor_key_recieve
                 )
                 if incoming_packet.decoded_buffer:
-                    handler = get_handler_for_packet(incoming_packet.packet_id)
+                    handler = networking.handlers.get_handler_for_packet(incoming_packet.packet_id)
                     if handler:
                         asyncio.create_task(handler.handle(incoming_packet))
 

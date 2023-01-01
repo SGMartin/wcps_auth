@@ -46,14 +46,35 @@ class ServerListHandler(PacketHandler):
         is_new_display_name = False
 
         if len(input_id) < 3 or not input_id.isalnum():
-            print("too short ID")
+            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.EnterIDError).build()))
+            return
 
         if len(input_pw) < 3:
-            print("too short password")
+            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.EnterPasswordError).build()))
+            return
 
         # Query the database for the login details
         this_user = await networking.database.get_user_details(input_id)
-        return
+        if not this_user: 
+            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.WrongUser).build()))
+            return
+
+        ## hash the password
+        password_to_hash = f"{input_pw}{this_user['salt']}".encode("utf-8")
+        hashed_password = hashlib.sha256(password_to_hash).hexdigest()
+
+        if this_user["password"] == hashed_password:
+            print("Correct password")
+            if this_user["rights"] == 0:
+                asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.Banned).build()))
+                return
+            else:
+                #TODO: check if online and proceed
+                asyncio.create_task(user.send(networking.packets.ServerList().build()))
+                return
+        else:
+            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.WrongPW).build()))
+            return
 
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
