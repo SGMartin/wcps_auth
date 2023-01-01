@@ -3,17 +3,19 @@ import aiomysql
 
 pool = None
 
+
 async def create_pool():
     global pool
     pool = await aiomysql.create_pool(
-        host='localhost',
+        host="localhost",
         port=3306,
-        user='root',
-        password='root',
-        db='auth_test',
-        loop=asyncio.get_event_loop()
+        user="root",
+        password="root",
+        db="auth_test",
+        loop=asyncio.get_event_loop(),
     )
     return pool
+
 
 async def run_pool():
     await create_pool()
@@ -38,7 +40,7 @@ async def get_server_list() -> list:
             return server_list
 
 
-async def get_user_details(user_id:str) -> dict:
+async def get_user_details(user_id: str) -> dict:
     async with pool.acquire() as connection:
         await connection.select_db("auth_test")
         async with connection.cursor() as cur:
@@ -48,20 +50,19 @@ async def get_user_details(user_id:str) -> dict:
             # By default a tuple is recieved
             if user_details:
                 user_details = user_details[0]
-                if len(user_details) == 6: 
+                if len(user_details) == 6:
                     this_user = {
                         "id": int(user_details[0]),
                         "username": user_details[1],
                         "displayname": user_details[2],
                         "password": user_details[3],
-                        "salt":user_details[4],
-                        "rights": int(user_details[5])
-                        }
+                        "salt": user_details[4],
+                        "rights": int(user_details[5]),
+                    }
                     return this_user
                 else:
-                    #TODO: Improper db format
+                    # TODO: Improper db format
                     print("Improper database schema")
                     return None
             else:
-                return None 
-            
+                return None

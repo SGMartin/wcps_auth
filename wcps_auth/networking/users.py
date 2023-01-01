@@ -5,6 +5,8 @@ from wcps_core.packets import InPacket, OutPacket, Connection
 
 import networking.packets
 import networking.handlers
+
+
 class User:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self.reader = reader
@@ -32,7 +34,9 @@ class User:
                     buffer=data, receptor=self, xor_key=self.xor_key_recieve
                 )
                 if incoming_packet.decoded_buffer:
-                    handler = networking.handlers.get_handler_for_packet(incoming_packet.packet_id)
+                    handler = networking.handlers.get_handler_for_packet(
+                        incoming_packet.packet_id
+                    )
                     if handler:
                         asyncio.create_task(handler.handle(incoming_packet))
 

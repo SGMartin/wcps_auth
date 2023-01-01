@@ -5,6 +5,7 @@ from wcps_core.packets import InPacket, OutPacket
 
 import aiomysql
 
+
 class GameServer:
     def __init__(
         self,
