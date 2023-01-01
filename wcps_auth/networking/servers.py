@@ -5,16 +5,17 @@ from wcps_core.packets import InPacket, OutPacket
 
 import mysql.connector
 
+
 class GameServer:
     def __init__(
         self,
-        reader:asyncio.StreamReader,
-        writer:asyncio.StreamWriter,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
         name: str = "",
         server_type: ServerTypes = ServerTypes.NONE,
         online: bool = False,
         current_players: int = 3600,
-        max_players: int = 3600
+        max_players: int = 3600,
     ):
         self.address, self.port = reader._transport.get_extra_info("peername")
         self.reader = reader
@@ -28,7 +29,6 @@ class GameServer:
 
         # Start the listen loop
         asyncio.create_task(self.listen())
-
 
     @property
     def name(self):
@@ -53,13 +53,13 @@ class GameServer:
     @is_online.setter
     def is_online(self, status: bool):
         self._is_online = status
-    
+
     @property
     def max_players(self):
         return self._max_players
 
     @max_players.setter
-    def max_players(self, max_players:int):
+    def max_players(self, max_players: int):
         try:
             max_players = int(max_players)
             if max_players not in range(0, 3601):
@@ -67,16 +67,16 @@ class GameServer:
                 print("max players must be in the 0-3600 range")
             else:
                 self._max_players = max_players
-        except ValueError: 
+        except ValueError:
             print("Cannot cast max players to int")
             self.disconnect()
 
     @property
     def current_players(self):
         return self._current_players
-    
+
     @current_players.setter
-    def current_players(self, players:int):
+    def current_players(self, players: int):
         try:
             players = int(players)
             if players not in range(0, self._max_players):
@@ -87,7 +87,6 @@ class GameServer:
         except ValueError:
             print("Cannot cast current players to int")
             self.disconnect()
-    
 
     async def listen(self):
         while True:
@@ -102,7 +101,6 @@ class GameServer:
                 print(decoded.packet_id)
                 print("HANDLERS HERE!")
 
-
     async def send(self, buffer):
         try:
             self.writer.write(buffer)
@@ -110,7 +108,7 @@ class GameServer:
         except Exception as e:
             print(f"Error sending packet: {e}")
             self.disconnect()
-    
+
     def disconnect(self):
         self.writer.close()
 

@@ -28,8 +28,9 @@ class PacketHandler(abc.ABC):
     def process(self, user_or_server):
         pass
 
-    def get_block(self, block_id:int):
-       return self.in_packet.blocks[block_id]
+    def get_block(self, block_id: int):
+        return self.in_packet.blocks[block_id]
+
 
 class LauncherHandler(PacketHandler):
     def process(self, receptor):
@@ -41,16 +42,17 @@ class ServerListHandler(PacketHandler):
     def process(self, user):
         input_id = self.get_block(2)
         input_pw = self.get_block(3)
-        is_new_display_name = False 
+        is_new_display_name = False
 
         if len(input_id) < 3 or not input_id.isalnum():
             print("too short ID")
-        
+
         if len(input_pw) < 3:
             print("too short password")
-        
+
         # Query the database for the login details
         return
+
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:

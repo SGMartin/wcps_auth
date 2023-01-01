@@ -6,6 +6,7 @@ from wcps_core.packets import InPacket, OutPacket, Connection
 from .packets import ClientXorKeys
 from .handlers import get_handler_for_packet
 
+
 class User:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self.reader = reader

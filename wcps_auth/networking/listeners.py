@@ -3,6 +3,7 @@ from networking.users import User
 from networking.servers import GameServer
 from wcps_core.constants import Ports
 
+
 async def start_listeners():
     try:
         client_server = await asyncio.start_server(User, "127.0.0.1", Ports.AUTH_CLIENT)
