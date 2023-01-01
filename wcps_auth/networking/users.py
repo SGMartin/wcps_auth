@@ -33,7 +33,7 @@ class User:
                 if incoming_packet.decoded_buffer:
                     handler = get_handler_for_packet(incoming_packet.packet_id)
                     if handler:
-                        handler.handle(incoming_packet)
+                        asyncio.create_task(handler.handle(incoming_packet))
 
     async def send(self, buffer):
         try:
