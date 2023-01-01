@@ -4,16 +4,21 @@ from wcps_core.constants import Ports
 import networking.users
 import networking.servers
 
+
 async def start_listeners():
     try:
-        client_server = await asyncio.start_server(networking.users.User, "127.0.0.1", Ports.AUTH_CLIENT)
+        client_server = await asyncio.start_server(
+            networking.users.User, "127.0.0.1", Ports.AUTH_CLIENT
+        )
         print("Client listener started.")
     except OSError:
         print(f"Failed to bind to port {Ports.CLIENT_SERVER}")
         return
 
     try:
-        server_listener = await asyncio.start_server(networking.servers.GameServer, "127.0.0.1", 5013)
+        server_listener = await asyncio.start_server(
+            networking.servers.GameServer, "127.0.0.1", 5013
+        )
         print("Server listener started.")
     except OSError:
         print(f"Failed to bind to port {Ports.OTHER_SERVER}")

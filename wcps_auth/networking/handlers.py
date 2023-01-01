@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 
 from wcps_core.packets import InPacket
+from wcps_core.constants import ErrorCodes
 
 import networking.database
 import networking.packets
@@ -46,17 +47,35 @@ class ServerListHandler(PacketHandler):
         is_new_display_name = False
 
         if len(input_id) < 3 or not input_id.isalnum():
-            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.EnterIDError).build()))
+            asyncio.create_task(
+                user.send(
+                    networking.packets.ServerList(
+                        networking.packets.ServerList.ErrorCodes.EnterIDError
+                    ).build()
+                )
+            )
             return
 
         if len(input_pw) < 3:
-            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.EnterPasswordError).build()))
+            asyncio.create_task(
+                user.send(
+                    networking.packets.ServerList(
+                        networking.packets.ServerList.ErrorCodes.EnterPasswordError
+                    ).build()
+                )
+            )
             return
 
         # Query the database for the login details
         this_user = await networking.database.get_user_details(input_id)
-        if not this_user: 
-            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.WrongUser).build()))
+        if not this_user:
+            asyncio.create_task(
+                user.send(
+                    networking.packets.ServerList(
+                        networking.packets.ServerList.ErrorCodes.WrongUser
+                    ).build()
+                )
+            )
             return
 
         ## hash the password
@@ -66,14 +85,30 @@ class ServerListHandler(PacketHandler):
         if this_user["password"] == hashed_password:
             print("Correct password")
             if this_user["rights"] == 0:
-                asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.Banned).build()))
+                asyncio.create_task(
+                    user.send(
+                        networking.packets.ServerList(
+                            networking.packets.ServerList.ErrorCodes.Banned
+                        ).build()
+                    )
+                )
                 return
             else:
-                #TODO: check if online and proceed
-                asyncio.create_task(user.send(networking.packets.ServerList().build()))
+                # TODO: check if online and proceed
+                asyncio.create_task(
+                    user.send(
+                        networking.packets.ServerList(ErrorCodes.SUCCESS, user).build()
+                    )
+                )
                 return
         else:
-            asyncio.create_task(user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.WrongPW).build()))
+            asyncio.create_task(
+                user.send(
+                    networking.packets.ServerList(
+                        networking.packets.ServerList.ErrorCodes.WrongPW
+                    ).build()
+                )
+            )
             return
 
 
