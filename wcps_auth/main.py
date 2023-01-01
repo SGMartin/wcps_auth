@@ -4,23 +4,11 @@ import socket
 import time 
 import threading
 
-#from networking import get_server_list, get_servers_details, start_user_listener
+from networking import start_listeners
+from networking import get_server_list
 
-from networking import client_listener,  server_listener, get_server_list
-
-# Start the game server listener in its own thread
-def start_server_listener():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(server_listener())
-
-
-# Start the client listener in its own thread
-def start_client_listener():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(client_listener())
-
+def run_async_listeners():
+    asyncio.run(start_listeners())
 
 def main():
     # Get the current date
@@ -28,17 +16,12 @@ def main():
     start_time = now.strftime("%d/%m/%Y")
     keep_running = True 
 
-    print("Client listener started.")
-    user_listener_thread = threading.Thread(target = start_client_listener)
-    user_listener_thread.start()
-
-    print("Game server listener started.")
-    server_listener_thread = threading.Thread(target = start_server_listener)
-    server_listener_thread.start()
-
     print("Retrieving game server master list...")
     all_game_servers = get_server_list("root", "root", "auth_test")
     print(f"Found {len(all_game_servers)} server/s to watch.")
+
+    async_listen_thread = threading.Thread(target = run_async_listeners)
+    async_listen_thread.start()
 
     while(keep_running):
         print("Begin game server scan...")
@@ -52,7 +35,7 @@ def main():
             finally:
                 s.close()
 
-        time.sleep(10)
+        time.sleep(1)
 
 
 if __name__ == '__main__':

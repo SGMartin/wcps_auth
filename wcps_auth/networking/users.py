@@ -9,7 +9,6 @@ class User:
     def __init__(self, reader, writer):
         self.reader = reader
         self.writer = writer
-
         # Send a connection packet
         self._connection = Connection(xor_key=ClientXorKeys.Send).build()
         asyncio.create_task(self.send(self._connection))
