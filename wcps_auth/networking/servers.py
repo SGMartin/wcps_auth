@@ -95,7 +95,6 @@ class GameServer:
             data = await self.reader.read(1024)
 
             if not data:
-                print(f"No data recieved... disconnecting.")
                 self.disconnect()
                 break
             else:
@@ -132,7 +131,6 @@ def get_server_list(user: str, password: str, database: str) -> list[GameServer]
     conn = mysql.connector.connect(
         host="localhost", port=3306, user=user, password=password, database=database
     )
-
     try:
         # Create a cursor
         cursor = conn.cursor()

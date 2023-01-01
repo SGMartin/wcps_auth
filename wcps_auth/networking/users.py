@@ -23,7 +23,6 @@ class User:
             data = await self.reader.read(1024)
 
             if not data:
-                print(f"No data recieved... disconnecting.")
                 self.disconnect()
                 break
             else:
