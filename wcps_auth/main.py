@@ -25,16 +25,16 @@ def main():
 
     while(keep_running):
         print("Begin game server scan...")
-
         for server in all_game_servers:
+            server_address, server_port = server
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                s.connect((server.address, server.port))
+                s.connect((server_address, server_port))
             except:
-                print(f"Failed to connect to {server.address}:{server.port}")
+                print(f"Failed to connect to {server_address}:{server_port}")
             finally:
                 s.close()
-
+        
         time.sleep(1)
 
 

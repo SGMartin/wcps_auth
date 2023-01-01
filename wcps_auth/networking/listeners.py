@@ -1,18 +1,18 @@
 import asyncio
 from networking.users import User
+from networking.servers import GameServer
 from wcps_core.constants import Ports
-#from networking.servers import GameServer
 
 async def start_listeners():
     try:
-        client_server = await asyncio.start_server(User, "127.0.0.1", Ports.CLIENT_SERVER)
+        client_server = await asyncio.start_server(User, "127.0.0.1", Ports.AUTH_CLIENT)
         print("Client listener started.")
     except OSError:
         print(f"Failed to bind to port {Ports.CLIENT_SERVER}")
         return
 
     try:
-        server_listener = await asyncio.start_server(User, "127.0.0.1", Ports.INTERNAL)
+        server_listener = await asyncio.start_server(GameServer, "127.0.0.1", 5013)
         print("Server listener started.")
     except OSError:
         print(f"Failed to bind to port {Ports.OTHER_SERVER}")

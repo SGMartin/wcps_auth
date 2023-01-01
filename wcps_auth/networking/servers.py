@@ -1,31 +1,34 @@
 import asyncio
-import socket
-
-import mysql.connector
 
 from wcps_core.constants import ServerTypes, InternalKeys
 from wcps_core.packets import InPacket, OutPacket
 
+import mysql.connector
+
 class GameServer:
     def __init__(
         self,
-        pid: int,
-        address: str,
-        port: int,
+        reader:asyncio.StreamReader,
+        writer:asyncio.StreamWriter,
         name: str = "",
         server_type: ServerTypes = ServerTypes.NONE,
         online: bool = False,
-        current_players: int = 0,
+        current_players: int = 3600,
         max_players: int = 3600
     ):
-        self.id = pid
+        self.address, self.port = reader._transport.get_extra_info("peername")
+        self.reader = reader
+        self.writer = writer
+        self.id = 0
         self._name = name
-        self.address = address
-        self.port = port
         self._server_type = server_type
         self._is_online = online
         self._current_players = current_players
         self._max_players = max_players
+
+        # Start the listen loop
+        asyncio.create_task(self.listen())
+
 
     @property
     def name(self):
@@ -82,16 +85,42 @@ class GameServer:
                 self._current_players = players
         except ValueError:
             print("Cannot cast current players to int")
+    
+
+    async def listen(self):
+        while True:
+            # Read a line of data from the client
+            data = await self.reader.read(1024)
+
+            if not data:
+                print(f"No data recieved... disconnecting.")
+                self.disconnect()
+                break
+            else:
+                decoded = InPacket(data, xor_key=InternalKeys.XOR_GAME_SEND)
+                print(decoded.packet_id)
+                print("HANDLERS HERE!")
 
 
-def generate_server_list(query_results: list) -> list[GameServer]:
+    async def send(self, buffer):
+        try:
+            self.writer.write(buffer)
+            await self.writer.drain()
+        except Exception as e:
+            print(f"Error sending packet: {e}")
+            self.disconnect()
+    
+    def disconnect(self):
+        self.writer.close()
+
+
+def generate_servers_addresses(query_results: list) -> list:
 
     server_list = []
     for candidate_server in query_results:
         ## Each result is a tuple of 4 fields
         server_id, addr, port, active = candidate_server
-        this_game_server = GameServer(pid=server_id, address=addr, port=port)
-        server_list.append(this_game_server)
+        server_list.append((addr, port))
 
     return server_list
 
@@ -116,7 +145,7 @@ def get_server_list(user: str, password: str, database: str) -> list[GameServer]
         # Close the cursor
         cursor.close()
 
-        all_servers = generate_server_list(result)
+        all_servers = generate_servers_addresses(result)
         return all_servers
     except mysql.connector.Error as err:
         # Print the error message and exit
