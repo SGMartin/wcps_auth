@@ -125,25 +125,3 @@ def get_server_list(user: str, password: str, database: str) -> list[GameServer]
     finally:
         # Close the connection
         conn.close()
-
-
-async def query_game_servers(game_servers:list[GameServer]):
-    for server in game_servers:
-        try:
-            print(f"Querying {server.address}")
-            reader, writer = await asyncio.open_connection(server.address, server.port)
-            response = await reader.read(1024)
-
-            full_packet = InPacket(response, xor_key = InternalKeys.XOR_GAME_SEND)
-            server.is_online = True
-            server.max_players = full_packet.blocks[3]
-            server.current_players = full_packet.blocks[2]
-            print(f"Server {full_packet.blocks[0]} is online.")
-            # return response
-        except socket.error:
-            print(f"Server {server.address} offline.")
-            server.is_online = False
-
-
-def get_servers_details(game_servers:list[GameServer]):
-    asyncio.run(query_game_servers(game_servers))
