@@ -15,7 +15,7 @@ class PacketHandler(abc.ABC):
     def __init__(self):
         self.in_packet = None
 
-    async def handle(self, packet_to_handle: wcps_core.packets.InPacket) -> None:
+    async def handle(self, packet_to_handle: InPacket) -> None:
         self.in_packet = packet_to_handle
         receptor = packet_to_handle.receptor
 
@@ -41,7 +41,7 @@ class LauncherHandler(PacketHandler):
 
 
 class ServerListHandler(PacketHandler):
-    async def process(self, user: networking.users.User) -> None:
+    async def process(self, user) -> None:
         input_id = self.get_block(2)
         input_pw = self.get_block(3)
         is_new_display_name = False
@@ -83,7 +83,6 @@ class ServerListHandler(PacketHandler):
         hashed_password = hashlib.sha256(password_to_hash).hexdigest()
 
         if this_user["password"] == hashed_password:
-            print("Correct password")
             if this_user["rights"] == 0:
                 asyncio.create_task(
                     user.send(
@@ -94,6 +93,11 @@ class ServerListHandler(PacketHandler):
                 )
             else:
                 # TODO: check if online and proceed
+                user.authorize(
+                    username=input_id,
+                    displayname=this_user["displayname"],
+                    rights=this_user["rights"],
+                )
                 asyncio.create_task(
                     user.send(
                         networking.packets.ServerList(ErrorCodes.SUCCESS, user).build()
@@ -107,6 +111,7 @@ class ServerListHandler(PacketHandler):
                     ).build()
                 )
             )
+
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:

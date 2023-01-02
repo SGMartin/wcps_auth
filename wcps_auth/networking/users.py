@@ -9,6 +9,13 @@ import networking.handlers
 
 class User:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        # Authorization data
+        self.authorized = False
+        self.username = "none"
+        self.displayname = ""
+        self.rights = 0
+
+        # connection data
         self.reader = reader
         self.writer = writer
         # Send a connection packet
@@ -34,6 +41,7 @@ class User:
                     buffer=data, receptor=self, xor_key=self.xor_key_recieve
                 )
                 if incoming_packet.decoded_buffer:
+                    print(f"IN:: {incoming_packet.decoded_buffer}")
                     handler = networking.handlers.get_handler_for_packet(
                         incoming_packet.packet_id
                     )
@@ -50,3 +58,10 @@ class User:
 
     def disconnect(self):
         self.writer.close()
+
+
+    def authorize(self, username:str, displayname:str, rights:int):
+        self.username = username
+        self.displayname = displayname
+        self.rights = rights
+        self.authorized = True
