@@ -45,22 +45,21 @@ class ServerList(OutPacket):
 
     def __init__(self, error_code: ErrorCodes, u=None):
         super().__init__(packet_id=PacketList.ServerList, xor_key=ClientXorKeys.Send)
-        print(error_code)
         if error_code != constants.ErrorCodes.SUCCESS or not u:
             self.append(error_code.value)
         else:
             self.append(1)
             self.append(1)  # ID
             self.append(0)  # unknown
-            self.append("test")  # userid
-            self.append("NULL")  # user PW
-            self.append("test")
-            self.append(10)  ## session ID
-            self.append(1)  # unknown
+            self.append(u.username)  # userid
+            self.append("NULL")  # user PW. whatever is put here will be sent back if logged again
+            self.append(u.displayname)
+            self.append(35)  ## current session ID
+            self.append(0)  # unknown??? whatever is put here will be sent back if logged again
             self.append(0)  # unknown
-            self.append(1)  # rights
-            self.append(1)  # PF_20
-            self.append(4)  ## Maximum value of servers for 2008 client
+            self.append(u.rights)  # rights
+            self.append(1)  # Olds servers say to append 1.11025 for PF20, but seems to be working atm.
+            self.append(4)  ## Maximum value of servers for 2008 client is 31
 
             for i in range(0, 4):
                 self.append(i)  # Server ID
@@ -70,6 +69,6 @@ class ServerList(OutPacket):
                 self.append(100)
                 self.append(1)
 
-            self.fill(-1, 4)
-            self.append(0)
-            self.append(0)
+            self.fill(-1, 4) # unknown
+            self.append(0) # unknown
+            self.append(0) # unknown
