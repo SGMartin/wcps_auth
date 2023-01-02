@@ -1,8 +1,6 @@
 import asyncio
 import datetime
-import socket
 import time
-import threading
 
 import networking.database
 from networking import start_listeners
