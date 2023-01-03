@@ -61,8 +61,7 @@ class User:
     def disconnect(self):
         self.writer.close()
         if self.authorized:
-            print("REMOVE ME")
-        #    sessions.Remove(self)
+            sessions.Remove(self)
 
 
     def authorize(self, username:str, displayname:str, rights:int):
