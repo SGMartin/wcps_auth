@@ -54,7 +54,7 @@ class ServerList(OutPacket):
             self.append(u.username)  # userid
             self.append("NULL")  # user PW. whatever is put here will be sent back if logged again
             self.append(u.displayname)
-            self.append(35)  ## current session ID
+            self.append(u.session_id)  ## current session ID
             self.append(0)  # unknown??? whatever is put here will be sent back if logged again
             self.append(0)  # unknown
             self.append(u.rights)  # rights

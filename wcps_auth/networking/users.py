@@ -3,6 +3,7 @@ import asyncio
 from wcps_core.constants import Ports
 from wcps_core.packets import InPacket, OutPacket, Connection
 
+import sessions
 import networking.packets
 import networking.handlers
 
@@ -14,6 +15,7 @@ class User:
         self.username = "none"
         self.displayname = ""
         self.rights = 0
+        self.session_id = -1
 
         # connection data
         self.reader = reader
@@ -58,6 +60,9 @@ class User:
 
     def disconnect(self):
         self.writer.close()
+        if self.authorized:
+            print("REMOVE ME")
+        #    sessions.Remove(self)
 
 
     def authorize(self, username:str, displayname:str, rights:int):

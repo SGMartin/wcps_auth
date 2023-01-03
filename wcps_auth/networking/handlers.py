@@ -5,6 +5,7 @@ import hashlib
 from wcps_core.packets import InPacket
 from wcps_core.constants import ErrorCodes
 
+import sessions
 import networking.database
 import networking.packets
 import networking.servers
@@ -46,6 +47,7 @@ class ServerListHandler(PacketHandler):
         input_pw = self.get_block(3)
         is_new_display_name = False
 
+        # Invalid username.
         if len(input_id) < 3 or not input_id.isalnum():
             asyncio.create_task(
                 user.send(
@@ -55,7 +57,7 @@ class ServerListHandler(PacketHandler):
                 )
             )
             return
-
+        # Invalid password: too short.
         if len(input_pw) < 3:
             asyncio.create_task(
                 user.send(
@@ -68,6 +70,7 @@ class ServerListHandler(PacketHandler):
 
         # Query the database for the login details
         this_user = await networking.database.get_user_details(input_id)
+        # User id does not exists
         if not this_user:
             asyncio.create_task(
                 user.send(
@@ -82,34 +85,33 @@ class ServerListHandler(PacketHandler):
         password_to_hash = f"{input_pw}{this_user['salt']}".encode("utf-8")
         hashed_password = hashlib.sha256(password_to_hash).hexdigest()
 
-        if this_user["password"] == hashed_password:
-            if this_user["rights"] == 0:
-                asyncio.create_task(
-                    user.send(
-                        networking.packets.ServerList(
-                            networking.packets.ServerList.ErrorCodes.Banned
-                        ).build()
-                    )
-                )
-            else:
-                # TODO: check if online and proceed
-                user.authorize(
-                    username=input_id,
-                    displayname=this_user["displayname"],
-                    rights=this_user["rights"],
-                )
-                asyncio.create_task(
-                    user.send(
-                        networking.packets.ServerList(ErrorCodes.SUCCESS, user).build()
-                    )
-                )
-        else:
+        # Wrong password.
+        if this_user["password"] != hashed_password:
             asyncio.create_task(
                 user.send(
-                    networking.packets.ServerList(
-                        networking.packets.ServerList.ErrorCodes.WrongPW
-                    ).build()
+                networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.WrongPW).build()
                 )
+            )
+            return
+        
+        # Banned user
+        if this_user["rights"] == 0:
+            asyncio.create_task(
+                user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.Banned).build())
+            )
+            return
+
+        # This user is already logged in
+        if input_id in sessions.GetAllAuthorized():
+            asyncio.create_task(
+                user.send(networking.packets.ServerList(networking.packets.ServerList.ErrorCodes.AlreadyLoggedIn).build())
+            )
+        else:
+            # Log the user and authorize it
+            user.authorize(username=input_id, displayname=this_user["displayname"], rights=this_user["rights"])
+            sessions.Authorize(user)
+            asyncio.create_task(
+                user.send(networking.packets.ServerList(ErrorCodes.SUCCESS, u = user).build())
             )
 
 
