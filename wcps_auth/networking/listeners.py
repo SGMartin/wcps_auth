@@ -12,7 +12,7 @@ async def start_listeners():
         )
         print("Client listener started.")
     except OSError:
-        print(f"Failed to bind to port {Ports.CLIENT_SERVER}")
+        print(f"Failed to bind to port {Ports.AUTH_CLIENT}")
         return
 
     try:
