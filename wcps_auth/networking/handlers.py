@@ -4,6 +4,7 @@ import hashlib
 
 from wcps_core.packets import InPacket
 from wcps_core.constants import ErrorCodes
+from wcps_core.constants import ServerTypes
 
 import sessions
 import networking.database
@@ -113,6 +114,44 @@ class ServerListHandler(PacketHandler):
             asyncio.create_task(
                 user.send(networking.packets.ServerList(ErrorCodes.SUCCESS, u = user).build())
             )
+
+class GameServerDetails(PacketHandler):
+    async def process(self, server) -> None:
+        # Display name of the server
+        displayname = self.get_block(0)
+        # To be cast to ServerTypes, indicates which kind of server it is
+        server_type = self.get_block(1)
+        # Current player load
+        current_players = self.get_block(2)
+        # Max server load. Client is limited to 3600 by default
+        max_players = self.get_block(3)
+
+        # TODO: build internal packet for this
+        if len(displayname < 3) or not displayname.isalnum():
+            print("Invalid server name")
+            return
+
+        if not current_players.isdigit() or not max_players.isdigit():
+            print(f"Invalid value/s reported ¨{current_players}/{max_players}")
+            return 
+        
+        # TODO: This could/should be moved to config.
+        valid_servers = [
+            ServerTypes.ENTIRE,
+            ServerTypes.ADULT,
+            ServerTypes.CLAN,
+            ServerTypes.TEST,
+            ServerTypes.DEVELOPMENT,
+            ServerTypes.TRAINEE
+        ]
+
+        if server_type.isdigit() and int(server_type) in valid_servers:
+            server.authorize(
+                server_name=displayname,
+                server_type=server_type,
+                current_players=int(current_players),
+                max_players=int(max_players)
+                )
 
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
