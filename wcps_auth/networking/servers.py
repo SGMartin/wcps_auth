@@ -7,25 +7,16 @@ import aiomysql
 
 
 class GameServer:
-    def __init__(
-        self,
-        reader: asyncio.StreamReader,
-        writer: asyncio.StreamWriter,
-        name: str = "",
-        server_type: ServerTypes = ServerTypes.NONE,
-        online: bool = False,
-        current_players: int = 3600,
-        max_players: int = 3600,
-    ):
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self.address, self.port = reader._transport.get_extra_info("peername")
         self.reader = reader
         self.writer = writer
         self.id = 0
-        self._name = name
-        self._server_type = server_type
-        self._is_online = online
-        self._current_players = current_players
-        self._max_players = max_players
+        self._name = ""
+        self._server_type = ServerTypes.NONE
+        self._is_online = False
+        self._current_players = 0
+        self._max_players = 0
 
         # Start the listen loop
         asyncio.create_task(self.listen())
@@ -87,6 +78,9 @@ class GameServer:
         except ValueError:
             print("Cannot cast current players to int")
             self.disconnect()
+
+    def authorize(self, server_name:str, server_type:int, current_players:int, max_players:int) -> None:
+        self.is_online = True
 
     async def listen(self):
         while True:
