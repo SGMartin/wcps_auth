@@ -17,11 +17,11 @@ async def start_listeners():
 
     try:
         server_listener = await asyncio.start_server(
-            networking.servers.GameServer, "127.0.0.1", 5013
+            networking.servers.GameServer, "127.0.0.1", Ports.INTERNAL
         )
         print("Server listener started.")
     except OSError:
-        print(f"Failed to bind to port {Ports.OTHER_SERVER}")
+        print(f"Failed to bind to port {Ports.INTERNAL}")
         return
 
     # Create tasks to run the servers in the background
