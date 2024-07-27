@@ -5,6 +5,7 @@ from wcps_core.packets import InPacket, OutPacket, Connection
 
 import aiomysql
 
+import networking.handlers
 
 class GameServer:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -98,7 +99,7 @@ class GameServer:
                 self.disconnect()
                 break
             else:
-                try:
+                #try:
                     incoming_packet = InPacket(
                         buffer=data, receptor=self, xor_key=self.xor_key_recieve
                     )
@@ -115,10 +116,10 @@ class GameServer:
                         print(f"Cannot decrypt packet {incoming_packet}")
                         self.disconnect()
 
-                except Exception as e:
-                    print(f"Bad packet {incoming_packet}")
-                    self.disconnect()
-                    break
+                #except Exception as e:
+                 #   print(f"Bad packet {incoming_packet}")
+                 #   self.disconnect()
+                 #   break
 
 
     async def send(self, buffer):
