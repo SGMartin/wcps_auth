@@ -111,12 +111,18 @@ class GameServer:
         self.address, self.port = reader._transport.get_extra_info("peername")
         self.reader = reader
         self.writer = writer
+        
+        ## Actual game server data
         self.id = 0
         self._name = ""
         self._server_type = wcps_core.constants.ServerTypes.NONE
         self._is_online = False
         self._current_players = 0
         self._max_players = 0
+        self.authorized = False
+        self.session_id = -1
+        
+        ## Send a connection packet
         self.xor_key_send = wcps_core.constants.InternalKeys.XOR_AUTH_SEND
         self.xor_key_receive = wcps_core.constants.InternalKeys.XOR_GAME_SEND
         self._connection = wcps_core.packets.Connection(xor_key=self.xor_key_send).build()
@@ -217,7 +223,15 @@ class GameServer:
             self.disconnect()
 
     async def disconnect(self):
-        await self.writer.close()
+        self.writer.close()
+        if self.authorized:
+            self.authorized = False
+            ## Clear the session just in case
+            session_manager = SessionManager()
+
+            if await session_manager.is_server_authenticated(self.server_id):
+                await session_manager.unauthorize_server(self.server_id)
+
 
 class Launcher(wcps_core.packets.OutPacket):
     def __init__(self):
@@ -385,19 +399,12 @@ class GameServerAuthHandler(PacketHandler):
         ## Check the session manager
         ## TODO: NEW AUTH FOR SERVERS
         session_manager = SessionManager()
-        session = session_manager.get(server_id)
+        is_server_authenticated = await session_manager.is_server_authenticated(server_id)
 
-        if session:
-            # Check if the session belongs to a server
-            if session.access_level == 'server':  # Assuming 'server' is the access level for servers
-                logging.info(f"Server with ID {server_id} is currently logged in.")
-                return True
-            else:
-                logging.info(f"Session found but it does not belong to a server with ID {server_id}.")
-                return False
+        if is_server_authenticated:
+            print("SERVER ALREADY LOGGED")
         else:
-            logging.info(f"No session found for server with ID {server_id}.")
-            return False   
+            print("AUTH PROCEDURE HERE")
 
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
