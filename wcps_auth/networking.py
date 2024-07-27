@@ -116,7 +116,6 @@ class GameServer:
         self.id = 0
         self._name = ""
         self._server_type = wcps_core.constants.ServerTypes.NONE
-        self._is_online = False
         self._current_players = 0
         self._max_players = 0
         self.authorized = False
@@ -144,14 +143,6 @@ class GameServer:
     @server_type.setter
     def server_type(self, new_type: wcps_core.constants.ServerTypes):
         self._server_type = new_type
-
-    @property
-    def is_online(self):
-        return self._is_online
-
-    @is_online.setter
-    def is_online(self, status: bool):
-        self._is_online = status
 
     @property
     def max_players(self):
@@ -187,8 +178,13 @@ class GameServer:
             logging.error("Cannot cast current players to int")
             self.disconnect()
 
-    def authorize(self, server_name: str, server_type: int, current_players: int, max_players: int) -> None:
-        self.is_online = True
+    def authorize(self, server_name: str, server_type: int, current_players: int, max_players: int, session_id: str) -> None:
+        self.name = server_name,
+        self.authorized = True
+        self.session_id = session_id
+        self.max_players = max_players
+        self.current_players = current_players
+        self.server_type =  server_type
 
     async def listen(self):
         while True:
@@ -363,7 +359,7 @@ class ServerListHandler(PacketHandler):
 class GameServerAuthHandler(PacketHandler):
     async def process(self, server) -> None:
 
-        error_code = self.get_block(0)
+        error_code = int(self.get_block(0))
 
         if error_code != wcps_core.constants.ErrorCodes.SUCCESS:
             return
@@ -376,7 +372,7 @@ class GameServerAuthHandler(PacketHandler):
         current_players = self.get_block(6)
         max_players = self.get_block(7)
 
-        if len(server_name) < 3 or not displayname.isalnum():
+        if len(server_name) < 3 or not server_name.isalnum():
             logging.error(f"Invalid server name for ID {server_id} at {server_addr}")
             return
         
