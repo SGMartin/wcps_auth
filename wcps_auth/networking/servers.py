@@ -1,7 +1,7 @@
 import asyncio
 
 from wcps_core.constants import ServerTypes, InternalKeys
-from wcps_core.packets import InPacket, OutPacket
+from wcps_core.packets import InPacket, OutPacket, Connection
 
 import aiomysql
 
@@ -17,6 +17,13 @@ class GameServer:
         self._is_online = False
         self._current_players = 0
         self._max_players = 0
+
+        ## Send a connection packet to incoming gameservers
+        self.xor_key_send = InternalKeys.XOR_AUTH_SEND
+        self.xor_key_recieve = InternalKeys.XOR_GAME_SEND
+
+        self._connection = Connection(xor_key=self.xor_key_send).build()
+        asyncio.create_task(self.send(self._connection))
 
         # Start the listen loop
         asyncio.create_task(self.listen())
@@ -92,7 +99,7 @@ class GameServer:
                 break
             else:
                 decoded = InPacket(data, xor_key=InternalKeys.XOR_GAME_SEND)
-                print(decoded.packet_id)
+                print(decoded)
                 print("HANDLERS HERE!")
 
     async def send(self, buffer):
