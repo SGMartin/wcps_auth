@@ -66,7 +66,7 @@ class User:
                     logging.info(f"IN:: {incoming_packet.decoded_buffer}")
                     handler = get_handler_for_packet(incoming_packet.packet_id)
                     if handler:
-                        await handler.handle(incoming_packet)
+                        asyncio.create_task(handler.handle(incoming_packet))
                     else:
                         logging.error(f"Unknown handler for packet {incoming_packet.packet_id}")
                 else:
@@ -187,7 +187,7 @@ class GameServer:
                     logging.info(f"IN:: {incoming_packet.decoded_buffer}")
                     handler = get_handler_for_packet(incoming_packet.packet_id)
                     if handler:
-                        await handler.handle(incoming_packet)
+                        asyncio.create_task(handler.handle(incoming_packet))
                     else:
                         logging.error(f"Unknown handler for packet {incoming_packet.packet_id}")
                 else:
@@ -270,7 +270,7 @@ class PacketHandler(abc.ABC):
         self.in_packet = packet_to_handle
         receptor = packet_to_handle.receptor
 
-        if isinstance(receptor, (User, GameServer)):
+        if isinstance(receptor, User) or isinstance(receptor, GameServer):
             await self.process(receptor)
         else:
             logging.error("No receptor for this packet!")
@@ -357,7 +357,13 @@ class GameServerDetails(PacketHandler):
             )
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
-    return handlers.get(packet_id, None)
+    if packet_id in handlers:
+        ## return a new initialized instance of the handler
+        return handlers[packet_id]()
+    else:
+        logging.info(f"Unknown packet ID {packet_id}")
+        return None
+
 
 handlers = {
     PacketList.LAUNCHER: LauncherHandler,
