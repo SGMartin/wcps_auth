@@ -5,7 +5,8 @@ import logging
 from enum import Enum
 
 import sessions
-import wcps_core
+import wcps_core.constants
+import wcps_core.packets
 
 from database import get_user_details
 
@@ -16,6 +17,7 @@ class ClientXorKeys:
     RECEIVE = 0xC3
 
 class PacketList:
+    INTERNALGAMEAUTHENTICATION = wcps_core.packets.PacketList.GameServerAuthentication
     LAUNCHER = 0x1010
     SERVER_LIST = 0x1100
     NICKNAME = 0x1101
@@ -324,17 +326,27 @@ class ServerListHandler(PacketHandler):
             sessions.Authorize(user)
             await user.send(ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u=user).build())
 
-class GameServerDetails(PacketHandler):
+
+class GameServerAuthHandler(PacketHandler):
     async def process(self, server) -> None:
-        displayname = self.get_block(0)
-        server_type = self.get_block(1)
-        current_players = self.get_block(2)
-        max_players = self.get_block(3)
+        1 0 Test 127.0.0.1 5340 0
+        error_code = self.get_block(0)
 
-        if len(displayname) < 3 or not displayname.isalnum():
-            logging.error("Invalid server name")
+        if error_code != wcps_core.constants.ErrorCodes.SUCCESS:
             return
+        
+        server_id = self.get_block(1)
+        server_name = self.get_block(2)
+        server_addr = self.get_block(3)
+        server_port = self.get_block(4)
+        server_type = self.get_block(5)
+        current_players = self.get_block(6)
+        max_players = self.get_block(7)
 
+        if len(server_name) < 3 or not displayname.isalnum():
+            logging.error(f"Invalid server name for ID {server_id} at {server_addr}")
+            return
+        
         if not current_players.isdigit() or not max_players.isdigit():
             logging.error(f"Invalid value/s reported ¨{current_players}/{max_players}")
             return
@@ -349,12 +361,15 @@ class GameServerDetails(PacketHandler):
         ]
 
         if server_type.isdigit() and int(server_type) in valid_servers:
-            server.authorize(
-                server_name=displayname,
-                server_type=int(server_type),
-                current_players=int(current_players),
-                max_players=int(max_players),
-            )
+            print("ON AUTHORIZE")
+            # server.authorize(
+            #     server_name=displayname,
+            #     server_type=int(server_type),
+            #     current_players=int(current_players),
+            #     max_players=int(max_players),
+            # )
+        else:
+            logging.error(f"Invalid server type: {server_type}")
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:
@@ -368,4 +383,5 @@ def get_handler_for_packet(packet_id: int) -> PacketHandler:
 handlers = {
     PacketList.LAUNCHER: LauncherHandler,
     PacketList.SERVER_LIST: ServerListHandler,
+    PAcketList.INTERNALGAMEAUTHENTICATION: GameServerAuthHandler
 }
