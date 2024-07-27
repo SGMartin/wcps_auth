@@ -2,9 +2,8 @@ import asyncio
 import datetime
 import time
 
-import networking.database
+from database import get_server_list, run_pool
 from networking import start_listeners
-
 
 # async def connect_to_game_server(server):
 #     server_address, server_port = server
@@ -21,10 +20,10 @@ async def main():
     start_time = now.strftime("%d/%m/%Y")
     keep_running = True
     print("Initializing database pool...")
-    await networking.database.run_pool()
+    await run_pool()
 
     print("Retrieving game server master list...")
-    all_game_servers = await networking.database.get_server_list()
+    all_game_servers = await get_server_list()
     print(f"Found {len(all_game_servers)} server/s to watch.")
 
     # Start the asyncio listeners
