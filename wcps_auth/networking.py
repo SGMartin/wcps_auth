@@ -6,6 +6,8 @@ from enum import Enum
 import sessions
 import wcps_core
 
+from database import get_user_details
+
 class ClientXorKeys:
     Send = 0x96
     Recieve = 0xC3
@@ -60,7 +62,7 @@ class User:
         self.xor_key_send = ClientXorKeys.Send
         self.xor_key_recieve = ClientXorKeys.Recieve
 
-        self._connection = Connection(xor_key=self.xor_key_send).build()
+        self._connection = wcps_core.packets.Connection(xor_key=self.xor_key_send).build()
         asyncio.create_task(self.send(self._connection))
 
         # Start the listen loop
@@ -272,7 +274,7 @@ class ServerList(wcps_core.packets.OutPacket):
 
     def __init__(self, error_code: ErrorCodes, u=None):
         super().__init__(packet_id=PacketList.ServerList, xor_key=ClientXorKeys.Send)
-        if error_code != constants.ErrorCodes.SUCCESS or not u:
+        if error_code != wcps_core.constants.ErrorCodes.SUCCESS or not u:
             self.append(error_code.value)
         else:
             self.append(1)
@@ -358,7 +360,7 @@ class ServerListHandler(PacketHandler):
             return
 
         # Query the database for the login details
-        this_user = await networking.database.get_user_details(input_id)
+        this_user = await get_user_details(input_id)
         # User id does not exists
         if not this_user:
             asyncio.create_task(
@@ -400,7 +402,7 @@ class ServerListHandler(PacketHandler):
             user.authorize(username=input_id, displayname=this_user["displayname"], rights=this_user["rights"])
             sessions.Authorize(user)
             asyncio.create_task(
-                user.send(ServerList(ErrorCodes.SUCCESS, u = user).build())
+                user.send(ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u = user).build())
             )
 
 class GameServerDetails(PacketHandler):
