@@ -74,10 +74,10 @@ class User:
                         logging.error(f"Unknown handler for packet {incoming_packet.packet_id}")
                 else:
                     logging.error(f"Cannot decrypt packet {incoming_packet}")
-                    self.disconnect()
+                    await self.disconnect()
             except Exception as e:
                 logging.exception(f"Error processing packet: {e}")
-                self.disconnect()
+                await self.disconnect()
                 break
 
     async def send(self, buffer):
@@ -154,12 +154,12 @@ class GameServer:
             max_players = int(max_players)
             if not (0 <= max_players <= 3600):
                 logging.error("max players must be in the 0-3600 range")
-                self.disconnect()
+                await self.disconnect()
             else:
                 self._max_players = max_players
         except ValueError:
             logging.error("Cannot cast max players to int")
-            self.disconnect()
+            await self.disconnect()
 
     @property
     def current_players(self):
@@ -171,12 +171,12 @@ class GameServer:
             players = int(players)
             if not (0 <= players <= self._max_players):
                 logging.error("Invalid current players.")
-                self.disconnect()
+                await self.disconnect()
             else:
                 self._current_players = players
         except ValueError:
             logging.error("Cannot cast current players to int")
-            self.disconnect()
+            await self.disconnect()
 
     def authorize(self, server_name: str, server_id:int, server_type: int, current_players: int, max_players: int, session_id: str) -> None:
         self.name = server_name,
@@ -205,10 +205,10 @@ class GameServer:
                         logging.error(f"Unknown handler for packet {incoming_packet.packet_id}")
                 else:
                     logging.error(f"Cannot decrypt packet {incoming_packet}")
-                    self.disconnect()
+                    await self.disconnect()
             except Exception as e:
                 logging.exception(f"Error processing packet: {e}")
-                self.disconnect()
+                await self.disconnect()
                 break
 
     async def send(self, buffer):
@@ -217,7 +217,7 @@ class GameServer:
             await self.writer.drain()
         except Exception as e:
             logging.exception(f"Error sending packet: {e}")
-            self.disconnect()
+            await self.disconnect()
 
     async def disconnect(self):
         self.writer.close()
@@ -226,8 +226,8 @@ class GameServer:
             ## Clear the session just in case
             session_manager = SessionManager()
 
-            #  if await session_manager.is_server_authenticated(self.id):
-            #     await session_manager.unauthorize_server(self.id)
+              if await session_manager.is_server_authenticated(self.id):
+                 await session_manager.unauthorize_server(self.id)
 
 
 class Launcher(wcps_core.packets.OutPacket):
