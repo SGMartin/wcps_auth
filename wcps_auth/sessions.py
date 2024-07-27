@@ -1,66 +1,72 @@
 import asyncio
-import threading
-import logging
-
-# Ensure logging configuration is in place
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-class Session:
-    def __init__(self, entity):
-        self.session_id = None
-        self.entity_id = entity.username if hasattr(entity, 'username') else entity.id
-        self.access_level = entity.rights if hasattr(entity, 'rights') else entity.access_level
+import uuid
 
 class SessionManager:
     _instance = None
+    _lock = asyncio.Lock()
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(SessionManager, cls).__new__(cls)
-            cls._instance.sessions = {}
-            cls._instance._lock = threading.Lock()  # Add a lock for thread safety
+            cls._instance._sessions = {}
+            cls._instance._user_to_session = {}
+            cls._instance._server_to_session = {}
         return cls._instance
 
-    def add(self, entity) -> None:
-        with self._lock:
-            if hasattr(entity, 'session_id') and entity.session_id in self.sessions:
-                logging.warning(f"Session already exists for entity with ID {entity.session_id}")
-                return
+    async def authenticate_player(self, user_id):
+        async with self._lock:
+            if user_id in self._user_to_session:
+                return self._user_to_session[user_id]
 
-            session_id = 0
-            while session_id in self.sessions:
-                session_id += 1
+            session_id = str(uuid.uuid4())
+            self._user_to_session[user_id] = session_id
+            self._sessions[session_id] = {'user_id': user_id}
+            return session_id
 
-            entity.session_id = session_id
-            self.sessions[session_id] = Session(entity)
-            logging.info(f"Added session {session_id} for entity with ID {entity.session_id}")
+    async def authenticate_server(self, server_id):
+        async with self._lock:
+            if server_id in self._server_to_session:
+                return self._server_to_session[server_id]
 
-    def get(self, session_id) -> Session:
-        with self._lock:
-            return self.sessions.get(session_id)
+            session_id = str(uuid.uuid4())
+            self._server_to_session[server_id] = session_id
+            self._sessions[session_id] = {'server_id': server_id}
+            return session_id
 
-    def remove(self, session_id) -> None:
-        with self._lock:
-            if session_id in self.sessions:
-                self.sessions.pop(session_id)
-                logging.info(f"Removed session {session_id}")
-            else:
-                logging.warning(f"Session ID {session_id} not found")
+    async def get_session_id_for_user(self, user_id):
+        async with self._lock:
+            return self._user_to_session.get(user_id)
 
-    def get_all_authorized(self) -> list:
-        with self._lock:
-            return [session.entity_id for session in self.sessions.values()]
+    async def get_session_id_for_server(self, server_id):
+        async with self._lock:
+            return self._server_to_session.get(server_id)
 
-    def is_authorized(self, entity) -> bool:
-        with self._lock:
-            return entity.session_id in self.sessions
+    async def get_user_id_for_session(self, session_id):
+        async with self._lock:
+            session = self._sessions.get(session_id)
+            return session.get('user_id') if session else None
 
-UserSessions = SessionManager()
+    async def get_server_id_for_session(self, session_id):
+        async with self._lock:
+            session = self._sessions.get(session_id)
+            return session.get('server_id') if session else None
 
-async def async_authorize(entity):
-    await asyncio.sleep(0)  # Simulate async operation
-    UserSessions.add(entity)
+    async def is_player_authenticated(self, user_id):
+        async with self._lock:
+            return user_id in self._user_to_session
 
-async def async_remove(entity):
-    await asyncio.sleep(0)  # Simulate async operation
-    UserSessions.remove(entity.session_id)
+    async def is_server_authenticated(self, server_id):
+        async with self._lock:
+            return server_id in self._server_to_session
+
+    async def unauthorize_player(self, user_id):
+        async with self._lock:
+            session_id = self._user_to_session.pop(user_id, None)
+            if session_id:
+                self._sessions.pop(session_id, None)
+
+    async def unauthorize_server(self, server_id):
+        async with self._lock:
+            session_id = self._server_to_session.pop(server_id, None)
+            if session_id:
+                self._sessions.pop(session_id, None)

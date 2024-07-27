@@ -9,6 +9,7 @@ import wcps_core.constants
 import wcps_core.packets
 
 from database import get_user_details
+from sessions import SessionManager
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,7 +60,7 @@ class User:
         while True:
             data = await self.reader.read(1024)
             if not data:
-                self.disconnect()
+                await self.disconnect()
                 break
 
             try:
@@ -85,18 +86,25 @@ class User:
             await self.writer.drain()
         except Exception as e:
             logging.exception(f"Error sending packet: {e}")
-            self.disconnect()
+            await self.disconnect()
 
-    def disconnect(self):
+    async def disconnect(self):
         self.writer.close()
         if self.authorized:
-            sessions.Remove(self)
+            self.authorized = False
+            ## Clear the session just in case
+            session_manager = SessionManager()
 
-    def authorize(self, username: str, displayname: str, rights: int):
+            if await session_manager.is_player_authenticated(self.username):
+                await session_manager.unauthorize_player(self.username)
+
+    
+    def authorize(self, username: str, displayname: str, rights: int, session_id:int):
         self.username = username
         self.displayname = displayname
         self.rights = rights
         self.authorized = True
+        self.session_id = session_id
 
 class GameServer:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -180,7 +188,7 @@ class GameServer:
         while True:
             data = await self.reader.read(1024)
             if not data:
-                self.disconnect()
+                await self.disconnect()
                 break
 
             try:
@@ -208,8 +216,8 @@ class GameServer:
             logging.exception(f"Error sending packet: {e}")
             self.disconnect()
 
-    def disconnect(self):
-        self.writer.close()
+    async def disconnect(self):
+        await self.writer.close()
 
 class Launcher(wcps_core.packets.OutPacket):
     def __init__(self):
@@ -319,22 +327,33 @@ class ServerListHandler(PacketHandler):
             await user.send(ServerList(ServerList.ErrorCodes.BANNED).build())
             return
 
-        if input_id in sessions.GetAllAuthorized():
+        ## check if a session already exists for this player
+        session_manager = SessionManager()
+        is_authorized = await session_manager.is_player_authenticated(this_user["username"])
+
+        ## The user is already logged in
+        if is_authorized:
             await user.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
         else:
-            user.authorize(username=input_id, displayname=this_user["displayname"], rights=this_user["rights"])
-            sessions.Authorize(user)
+            ## Authenticate it and let him log!
+            user_session_id = await session_manager.authenticate_player(this_user["username"])
+            user.authorize(
+                username=input_id,
+                displayname=this_user["displayname"],
+                rights=this_user["rights"],
+                session_id = user_session_id
+            )
             await user.send(ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u=user).build())
 
 
 class GameServerAuthHandler(PacketHandler):
     async def process(self, server) -> None:
-        1 0 Test 127.0.0.1 5340 0
+
         error_code = self.get_block(0)
 
         if error_code != wcps_core.constants.ErrorCodes.SUCCESS:
             return
-        
+
         server_id = self.get_block(1)
         server_name = self.get_block(2)
         server_addr = self.get_block(3)
@@ -360,16 +379,26 @@ class GameServerAuthHandler(PacketHandler):
             wcps_core.constants.ServerTypes.TRAINEE,
         ]
 
-        if server_type.isdigit() and int(server_type) in valid_servers:
-            print("ON AUTHORIZE")
-            # server.authorize(
-            #     server_name=displayname,
-            #     server_type=int(server_type),
-            #     current_players=int(current_players),
-            #     max_players=int(max_players),
-            # )
-        else:
+        if not (server_type.isdigit() and int(server_type) in valid_servers):
             logging.error(f"Invalid server type: {server_type}")
+
+        ## Check the session manager
+        ## TODO: NEW AUTH FOR SERVERS
+        session_manager = SessionManager()
+        session = session_manager.get(server_id)
+
+        if session:
+            # Check if the session belongs to a server
+            if session.access_level == 'server':  # Assuming 'server' is the access level for servers
+                logging.info(f"Server with ID {server_id} is currently logged in.")
+                return True
+            else:
+                logging.info(f"Session found but it does not belong to a server with ID {server_id}.")
+                return False
+        else:
+            logging.info(f"No session found for server with ID {server_id}.")
+            return False   
+
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:
@@ -383,5 +412,5 @@ def get_handler_for_packet(packet_id: int) -> PacketHandler:
 handlers = {
     PacketList.LAUNCHER: LauncherHandler,
     PacketList.SERVER_LIST: ServerListHandler,
-    PAcketList.INTERNALGAMEAUTHENTICATION: GameServerAuthHandler
+    PacketList.INTERNALGAMEAUTHENTICATION: GameServerAuthHandler
 }
