@@ -5,15 +5,6 @@ import time
 from database import get_server_list, run_pool
 from networking import start_listeners
 
-# async def connect_to_game_server(server):
-#     server_address, server_port = server
-#     try:
-#         reader, writer = await asyncio.open_connection(server_address, server_port)
-#         writer.close()
-#     except:
-#         print(f"Cannot connect to {server_address}:{server_port}.")
-
-
 async def main():
     # Get the current date
     now = datetime.datetime.now()
