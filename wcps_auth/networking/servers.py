@@ -98,9 +98,28 @@ class GameServer:
                 self.disconnect()
                 break
             else:
-                decoded = InPacket(data, xor_key=InternalKeys.XOR_GAME_SEND)
-                print(decoded)
-                print("HANDLERS HERE!")
+                try:
+                    incoming_packet = InPacket(
+                        buffer=data, receptor=self, xor_key=self.xor_key_recieve
+                    )
+                    if incoming_packet.decoded_buffer:
+                        print(f"IN:: {incoming_packet.decoded_buffer}")
+                        handler = networking.handlers.get_handler_for_packet(
+                            incoming_packet.packet_id
+                        )
+                        if handler:
+                            asyncio.create_task(handler.handle(incoming_packet))
+                        else:
+                            print(f"Unknown handler for packet {incoming_packet.packet_id}")
+                    else:
+                        print(f"Cannot decrypt packet {incoming_packet}")
+                        self.disconnect()
+
+                except Exception as e:
+                    print(f"Bad packet {incoming_packet}")
+                    self.disconnect()
+                    break
+
 
     async def send(self, buffer):
         try:

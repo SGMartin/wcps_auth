@@ -6,13 +6,13 @@ import networking.database
 from networking import start_listeners
 
 
-async def connect_to_game_server(server):
-    server_address, server_port = server
-    try:
-        reader, writer = await asyncio.open_connection(server_address, server_port)
-        writer.close()
-    except:
-        print(f"Cannot connect to {server_address}:{server_port}.")
+# async def connect_to_game_server(server):
+#     server_address, server_port = server
+#     try:
+#         reader, writer = await asyncio.open_connection(server_address, server_port)
+#         writer.close()
+#     except:
+#         print(f"Cannot connect to {server_address}:{server_port}.")
 
 
 async def main():
@@ -31,12 +31,12 @@ async def main():
     asyncio.create_task(start_listeners())
 
     while keep_running:
-        print("Begin game server scan...")
-        tasks = []
-        for server in all_game_servers:
-            task = asyncio.create_task(connect_to_game_server(server))
-            tasks.append(task)
-        await asyncio.gather(*tasks)
+        print("Server running...")
+        # tasks = []
+        # for server in all_game_servers:
+        #     task = asyncio.create_task(connect_to_game_server(server))
+        #     tasks.append(task)
+        # await asyncio.gather(*tasks)
 
         await asyncio.sleep(1)
 
