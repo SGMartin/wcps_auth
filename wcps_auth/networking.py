@@ -1,6 +1,7 @@
 import asyncio
 import abc
 import hashlib
+import logging
 from enum import Enum
 
 import sessions
@@ -8,105 +9,80 @@ import wcps_core
 
 from database import get_user_details
 
+logging.basicConfig(level=logging.INFO)
 
 class ClientXorKeys:
-    Send = 0x96
-    Recieve = 0xC3
-
+    SEND = 0x96
+    RECEIVE = 0xC3
 
 class PacketList:
-    Launcher = 0x1010
-    ServerList = 0x1100
-    NickName = 0x1101
-    Test = 0x1102
-
+    LAUNCHER = 0x1010
+    SERVER_LIST = 0x1100
+    NICKNAME = 0x1101
+    TEST = 0x1102
 
 async def start_listeners():
     try:
-        client_server = await asyncio.start_server(
-            User, "127.0.0.1", wcps_core.constants.Ports.AUTH_CLIENT
-        )
-        print("Client listener started.")
+        client_server = await asyncio.start_server(User, "127.0.0.1", wcps_core.constants.Ports.AUTH_CLIENT)
+        logging.info("Client listener started.")
     except OSError:
-        print(f"Failed to bind to port {wcps_core.constants.Ports.AUTH_CLIENT}")
+        logging.error(f"Failed to bind to port {wcps_core.constants.Ports.AUTH_CLIENT}")
         return
 
     try:
-        server_listener = await asyncio.start_server(
-            GameServer, "127.0.0.1", wcps_core.constants.Ports.INTERNAL
-        )
-        print("Server listener started.")
+        server_listener = await asyncio.start_server(GameServer, "127.0.0.1", wcps_core.constants.Ports.INTERNAL)
+        logging.info("Server listener started.")
     except OSError:
-        print(f"Failed to bind to port {wcps_core.constants.Ports.INTERNAL}")
+        logging.error(f"Failed to bind to port {wcps_core.constants.Ports.INTERNAL}")
         return
 
-    # Create tasks to run the servers in the background
-    client_server_task = asyncio.create_task(client_server.serve_forever())
-    server_listener_task = asyncio.create_task(server_listener.serve_forever())
-
-    # Wait for the tasks to complete
-    await asyncio.gather(client_server_task, server_listener_task)
-
+    await asyncio.gather(client_server.serve_forever(), server_listener.serve_forever())
 
 class User:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        # Authorization data
         self.authorized = False
         self.username = "none"
         self.displayname = ""
         self.rights = 0
         self.session_id = -1
-
-        # connection data
         self.reader = reader
         self.writer = writer
-        # Send a connection packet
-        self.xor_key_send = ClientXorKeys.Send
-        self.xor_key_recieve = ClientXorKeys.Recieve
-
-        self._connection = wcps_core.packets.Connection(
-            xor_key=self.xor_key_send
-        ).build()
+        self.xor_key_send = ClientXorKeys.SEND
+        self.xor_key_receive = ClientXorKeys.RECEIVE
+        self._connection = wcps_core.packets.Connection(xor_key=self.xor_key_send).build()
         asyncio.create_task(self.send(self._connection))
-
-        # Start the listen loop
         asyncio.create_task(self.listen())
 
     async def listen(self):
         while True:
-            # Read a line of data from the client
             data = await self.reader.read(1024)
-
             if not data:
                 self.disconnect()
                 break
-            else:
-                try:
-                    incoming_packet = wcps_core.packets.InPacket(
-                        buffer=data, receptor=self, xor_key=self.xor_key_recieve
-                    )
-                    if incoming_packet.decoded_buffer:
-                        print(f"IN:: {incoming_packet.decoded_buffer}")
-                        handler = get_handler_for_packet(incoming_packet.packet_id)
-                        if handler:
-                            asyncio.create_task(handler.handle(incoming_packet))
-                        else:
-                            print(f"Unknown handler for packet {handler.packet_id}")
-                    else:
-                        print(f"Cannot decrypt packet {incoming_packet}")
-                        self.disconnect()
 
-                except Exception as e:
-                    print(f"Bad packet listenning {incoming_packet}")
+            try:
+                incoming_packet = wcps_core.packets.InPacket(buffer=data, receptor=self, xor_key=self.xor_key_receive)
+                if incoming_packet.decoded_buffer:
+                    logging.info(f"IN:: {incoming_packet.decoded_buffer}")
+                    handler = get_handler_for_packet(incoming_packet.packet_id)
+                    if handler:
+                        await handler.handle(incoming_packet)
+                    else:
+                        logging.error(f"Unknown handler for packet {incoming_packet.packet_id}")
+                else:
+                    logging.error(f"Cannot decrypt packet {incoming_packet}")
                     self.disconnect()
-                    break
+            except Exception as e:
+                logging.exception(f"Error processing packet: {e}")
+                self.disconnect()
+                break
 
     async def send(self, buffer):
         try:
             self.writer.write(buffer)
             await self.writer.drain()
         except Exception as e:
-            print(f"Error sending packet: {e}")
+            logging.exception(f"Error sending packet: {e}")
             self.disconnect()
 
     def disconnect(self):
@@ -120,7 +96,6 @@ class User:
         self.rights = rights
         self.authorized = True
 
-
 class GameServer:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self.address, self.port = reader._transport.get_extra_info("peername")
@@ -132,17 +107,10 @@ class GameServer:
         self._is_online = False
         self._current_players = 0
         self._max_players = 0
-
-        ## Send a connection packet to incoming gameservers
         self.xor_key_send = wcps_core.constants.InternalKeys.XOR_AUTH_SEND
-        self.xor_key_recieve = wcps_core.constants.InternalKeys.XOR_GAME_SEND
-
-        self._connection = wcps_core.packets.Connection(
-            xor_key=self.xor_key_send
-        ).build()
+        self.xor_key_receive = wcps_core.constants.InternalKeys.XOR_GAME_SEND
+        self._connection = wcps_core.packets.Connection(xor_key=self.xor_key_send).build()
         asyncio.create_task(self.send(self._connection))
-
-        # Start the listen loop
         asyncio.create_task(self.listen())
 
     @property
@@ -177,13 +145,13 @@ class GameServer:
     def max_players(self, max_players: int):
         try:
             max_players = int(max_players)
-            if max_players not in range(0, 3601):
+            if not (0 <= max_players <= 3600):
+                logging.error("max players must be in the 0-3600 range")
                 self.disconnect()
-                print("max players must be in the 0-3600 range")
             else:
                 self._max_players = max_players
         except ValueError:
-            print("Cannot cast max players to int")
+            logging.error("Cannot cast max players to int")
             self.disconnect()
 
     @property
@@ -194,87 +162,78 @@ class GameServer:
     def current_players(self, players: int):
         try:
             players = int(players)
-            if players not in range(0, self._max_players):
-                print("Invalid current players.")
+            if not (0 <= players <= self._max_players):
+                logging.error("Invalid current players.")
                 self.disconnect()
             else:
                 self._current_players = players
         except ValueError:
-            print("Cannot cast current players to int")
+            logging.error("Cannot cast current players to int")
             self.disconnect()
 
-    def authorize(
-        self, server_name: str, server_type: int, current_players: int, max_players: int
-    ) -> None:
+    def authorize(self, server_name: str, server_type: int, current_players: int, max_players: int) -> None:
         self.is_online = True
 
     async def listen(self):
         while True:
-            # Read a line of data from the client
             data = await self.reader.read(1024)
-
             if not data:
                 self.disconnect()
                 break
-            else:
-                # try:
-                incoming_packet = wcps_core.packets.InPacket(
-                    buffer=data, receptor=self, xor_key=self.xor_key_recieve
-                )
+
+            try:
+                incoming_packet = wcps_core.packets.InPacket(buffer=data, receptor=self, xor_key=self.xor_key_receive)
                 if incoming_packet.decoded_buffer:
-                    print(f"IN:: {incoming_packet.decoded_buffer}")
+                    logging.info(f"IN:: {incoming_packet.decoded_buffer}")
                     handler = get_handler_for_packet(incoming_packet.packet_id)
                     if handler:
-                        asyncio.create_task(handler.handle(incoming_packet))
+                        await handler.handle(incoming_packet)
                     else:
-                        print(f"Unknown handler for packet {incoming_packet.packet_id}")
+                        logging.error(f"Unknown handler for packet {incoming_packet.packet_id}")
                 else:
-                    print(f"Cannot decrypt packet {incoming_packet}")
+                    logging.error(f"Cannot decrypt packet {incoming_packet}")
                     self.disconnect()
-
-            # except Exception as e:
-            #   print(f"Bad packet {incoming_packet}")
-            #   self.disconnect()
-            #   break
+            except Exception as e:
+                logging.exception(f"Error processing packet: {e}")
+                self.disconnect()
+                break
 
     async def send(self, buffer):
         try:
             self.writer.write(buffer)
             await self.writer.drain()
         except Exception as e:
-            print(f"Error sending packet: {e}")
+            logging.exception(f"Error sending packet: {e}")
             self.disconnect()
 
     def disconnect(self):
         self.writer.close()
 
-
 class Launcher(wcps_core.packets.OutPacket):
     def __init__(self):
-        super().__init__(packet_id=PacketList.Launcher, xor_key=ClientXorKeys.Send)
+        super().__init__(packet_id=PacketList.LAUNCHER, xor_key=ClientXorKeys.SEND)
         self.fill(0, 7)
-
 
 class ServerList(wcps_core.packets.OutPacket):
     class ErrorCodes(Enum):
-        IllegalException = 70101
-        NewNickname = 72000
-        WrongUser = 72010
-        WrongPW = 72020
-        AlreadyLoggedIn = 72030
-        ClientVerNotMatch = 70301
-        Banned = 73050
-        BannedTime = 73020
-        NotActive = 73040
-        EnterIDError = 74010
-        EnterPasswordError = 74020
-        ErrorNickname = 74030
-        NicknameTaken = 74070
-        NicknameToLong = 74100
-        IlligalNickname = 74110
+        ILLEGAL_EXCEPTION = 70101
+        NEW_NICKNAME = 72000
+        WRONG_USER = 72010
+        WRONG_PW = 72020
+        ALREADY_LOGGED_IN = 72030
+        CLIENT_VER_NOT_MATCH = 70301
+        BANNED = 73050
+        BANNED_TIME = 73020
+        NOT_ACTIVE = 73040
+        ENTER_ID_ERROR = 74010
+        ENTER_PASSWORD_ERROR = 74020
+        ERROR_NICKNAME = 74030
+        NICKNAME_TAKEN = 74070
+        NICKNAME_TOO_LONG = 74100
+        ILLEGAL_NICKNAME = 74110
 
     def __init__(self, error_code: ErrorCodes, u=None):
-        super().__init__(packet_id=PacketList.ServerList, xor_key=ClientXorKeys.Send)
+        super().__init__(packet_id=PacketList.SERVER_LIST, xor_key=ClientXorKeys.SEND)
         if error_code != wcps_core.constants.ErrorCodes.SUCCESS or not u:
             self.append(error_code.value)
         else:
@@ -282,22 +241,16 @@ class ServerList(wcps_core.packets.OutPacket):
             self.append(1)  # ID
             self.append(0)  # unknown
             self.append(u.username)  # userid
-            self.append(
-                "NULL"
-            )  # user PW. whatever is put here will be sent back if logged again
+            self.append("NULL")  # user PW. whatever is put here will be sent back if logged again
             self.append(u.displayname)
-            self.append(u.session_id)  ## current session ID
-            self.append(
-                0
-            )  # unknown??? whatever is put here will be sent back if logged again
+            self.append(u.session_id)  # current session ID
+            self.append(0)  # unknown??? whatever is put here will be sent back if logged again
             self.append(0)  # unknown
             self.append(u.rights)  # rights
-            self.append(
-                1
-            )  # Olds servers say to append 1.11025 for PF20, but seems to be working atm.
-            self.append(4)  ## Maximum value of servers for 2008 client is 31
+            self.append(1)  # Old servers say to append 1.11025 for PF20, but seems to be working atm.
+            self.append(4)  # Maximum value of servers for 2008 client is 31
 
-            for i in range(0, 4):
+            for i in range(4):
                 self.append(i)  # Server ID
                 self.append(f"Test {i}")
                 self.append("0.0.0.0.0")
@@ -309,7 +262,6 @@ class ServerList(wcps_core.packets.OutPacket):
             self.append(0)  # unknown
             self.append(0)  # unknown
 
-
 class PacketHandler(abc.ABC):
     def __init__(self):
         self.in_packet = None
@@ -318,10 +270,10 @@ class PacketHandler(abc.ABC):
         self.in_packet = packet_to_handle
         receptor = packet_to_handle.receptor
 
-        if isinstance(receptor, User) or isinstance(receptor, GameServer):
+        if isinstance(receptor, (User, GameServer)):
             await self.process(receptor)
         else:
-            print("No receptor for this packet!")
+            logging.error("No receptor for this packet!")
 
     @abc.abstractmethod
     async def process(self, user_or_server):
@@ -330,100 +282,63 @@ class PacketHandler(abc.ABC):
     def get_block(self, block_id: int) -> str:
         return self.in_packet.blocks[block_id]
 
-
 class LauncherHandler(PacketHandler):
     async def process(self, receptor) -> None:
         launch_packet = Launcher().build()
-        asyncio.create_task(receptor.send(launch_packet))
-
+        await receptor.send(launch_packet)
 
 class ServerListHandler(PacketHandler):
     async def process(self, user) -> None:
         input_id = self.get_block(2)
         input_pw = self.get_block(3)
-        is_new_display_name = False
 
-        # Invalid username.
         if len(input_id) < 3 or not input_id.isalnum():
-            asyncio.create_task(
-                user.send(ServerList(ServerList.ErrorCodes.EnterIDError).build())
-            )
+            await user.send(ServerList(ServerList.ErrorCodes.ENTER_ID_ERROR).build())
             return
-        # Invalid password: too short.
+
         if len(input_pw) < 3:
-            asyncio.create_task(
-                user.send(ServerList(ServerList.ErrorCodes.EnterPasswordError).build())
-            )
+            await user.send(ServerList(ServerList.ErrorCodes.ENTER_PASSWORD_ERROR).build())
             return
 
-        # Query the database for the login details
         this_user = await get_user_details(input_id)
-        # User id does not exists
+
         if not this_user:
-            asyncio.create_task(
-                user.send(ServerList(ServerList.ErrorCodes.WrongUser).build())
-            )
+            await user.send(ServerList(ServerList.ErrorCodes.WRONG_USER).build())
             return
 
-        ## hash the password
         password_to_hash = f"{input_pw}{this_user['salt']}".encode("utf-8")
         hashed_password = hashlib.sha256(password_to_hash).hexdigest()
 
-        # Wrong password.
         if this_user["password"] != hashed_password:
-            asyncio.create_task(
-                user.send(ServerList(ServerList.ErrorCodes.WrongPW).build())
-            )
+            await user.send(ServerList(ServerList.ErrorCodes.WRONG_PW).build())
             return
 
-        # Banned user
         if this_user["rights"] == 0:
-            asyncio.create_task(
-                user.send(ServerList(ServerList.ErrorCodes.Banned).build())
-            )
+            await user.send(ServerList(ServerList.ErrorCodes.BANNED).build())
             return
 
-        # This user is already logged in
         if input_id in sessions.GetAllAuthorized():
-            asyncio.create_task(
-                user.send(ServerList(ServerList.ErrorCodes.AlreadyLoggedIn).build())
-            )
+            await user.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
         else:
-            # Log the user and authorize it
-            user.authorize(
-                username=input_id,
-                displayname=this_user["displayname"],
-                rights=this_user["rights"],
-            )
+            user.authorize(username=input_id, displayname=this_user["displayname"], rights=this_user["rights"])
             sessions.Authorize(user)
-            asyncio.create_task(
-                user.send(
-                    ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u=user).build()
-                )
-            )
-
+            await user.send(ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u=user).build())
 
 class GameServerDetails(PacketHandler):
     async def process(self, server) -> None:
-        # Display name of the server
         displayname = self.get_block(0)
-        # To be cast to ServerTypes, indicates which kind of server it is
         server_type = self.get_block(1)
-        # Current player load
         current_players = self.get_block(2)
-        # Max server load. Client is limited to 3600 by default
         max_players = self.get_block(3)
 
-        # TODO: build internal packet for this
-        if len(displayname < 3) or not displayname.isalnum():
-            print("Invalid server name")
+        if len(displayname) < 3 or not displayname.isalnum():
+            logging.error("Invalid server name")
             return
 
         if not current_players.isdigit() or not max_players.isdigit():
-            print(f"Invalid value/s reported ¨{current_players}/{max_players}")
+            logging.error(f"Invalid value/s reported ¨{current_players}/{max_players}")
             return
 
-        # TODO: This could/should be moved to config.
         valid_servers = [
             wcps_core.constants.ServerTypes.ENTIRE,
             wcps_core.constants.ServerTypes.ADULT,
@@ -436,21 +351,15 @@ class GameServerDetails(PacketHandler):
         if server_type.isdigit() and int(server_type) in valid_servers:
             server.authorize(
                 server_name=displayname,
-                server_type=server_type,
+                server_type=int(server_type),
                 current_players=int(current_players),
                 max_players=int(max_players),
             )
 
-
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
-    if packet_id in handlers:
-        ## return a new initialized instance of the handler
-        return handlers[packet_id]()
-    else:
-        print(f"Unknown packet ID {packet_id}")
-        return None
+    return handlers.get(packet_id, None)
 
-
-handlers = {}
-handlers[PacketList.Launcher] = LauncherHandler
-handlers[PacketList.ServerList] = ServerListHandler
+handlers = {
+    PacketList.LAUNCHER: LauncherHandler,
+    PacketList.SERVER_LIST: ServerListHandler,
+}
