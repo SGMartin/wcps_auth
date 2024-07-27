@@ -8,7 +8,7 @@ import sessions
 import wcps_core.constants
 import wcps_core.packets
 
-from database import get_user_details
+from database import get_user_details, get_server_list
 from sessions import SessionManager
 
 logging.basicConfig(level=logging.INFO)
@@ -178,8 +178,9 @@ class GameServer:
             logging.error("Cannot cast current players to int")
             self.disconnect()
 
-    def authorize(self, server_name: str, server_type: int, current_players: int, max_players: int, session_id: str) -> None:
+    def authorize(self, server_name: str, server_id:int, server_type: int, current_players: int, max_players: int, session_id: str) -> None:
         self.name = server_name,
+        self.id = server_id,
         self.authorized = True
         self.session_id = session_id
         self.max_players = max_players
@@ -225,8 +226,8 @@ class GameServer:
             ## Clear the session just in case
             session_manager = SessionManager()
 
-            if await session_manager.is_server_authenticated(self.server_id):
-                await session_manager.unauthorize_server(self.server_id)
+            #  if await session_manager.is_server_authenticated(self.id):
+            #     await session_manager.unauthorize_server(self.id)
 
 
 class Launcher(wcps_core.packets.OutPacket):
@@ -281,6 +282,20 @@ class ServerList(wcps_core.packets.OutPacket):
             self.fill(-1, 4)  # unknown
             self.append(0)  # unknown
             self.append(0)  # unknown
+
+class InternalGameAuthentication(wcps_core.packets.OutPacket):
+    def __init__(self, error_code, s=None):
+        super().__init__(
+            packet_id=PacketList.INTERNALGAMEAUTHENTICATION, 
+            xor_key=wcps_core.constants.InternalKeys.XOR_AUTH_SEND)
+
+        if error_code != wcps_core.constants.ErrorCodes.SUCCESS or not s:
+            self.append(error_code)
+        else:
+            self.append(wcps_core.constants.ErrorCodes.SUCCESS)
+            self.append(s.session_id) ## tell the server their session ID 
+        
+        
 
 class PacketHandler(abc.ABC):
     def __init__(self):
@@ -391,16 +406,39 @@ class GameServerAuthHandler(PacketHandler):
 
         if not (server_type.isdigit() and int(server_type) in valid_servers):
             logging.error(f"Invalid server type: {server_type}")
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.INVALID_SERVER_TYPE).build())
+            return
+        
+        ## get list of servers registered in the DB
+        ## server list format is [(id,ip,addr)]
+        ##TODO: Potential DDoS here... generate a list that only updates each X?
+        ##TODO: check against max. number of authorized servers
+        all_active_servers = await get_server_list()
+        if not (server_id, server_addr, server_port) in all_active_servers:
+            logging.error(f"Unregistered server: {server_addr}:{server_port}")
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
+            return
 
-        ## Check the session manager
-        ## TODO: NEW AUTH FOR SERVERS
         session_manager = SessionManager()
         is_server_authenticated = await session_manager.is_server_authenticated(server_id)
 
         if is_server_authenticated:
-            print("SERVER ALREADY LOGGED")
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED).build())
+            logging.info(f"Server {server_addr} already registered")
+
         else:
-            print("AUTH PROCEDURE HERE")
+            server_session_id = await session_manager.authenticate_server(server_id)
+            server.authorize(
+                server_name=server_name,
+                server_id=int(server_id),
+                server_type=int(server_type),
+                current_players=int(current_players),
+                max_players=int(max_players),
+                session_id=server_session_id
+            )
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SUCCESS, server).build())
+            logging.info(f"Server {server_addr} authenticated as {server_session_id}")
+
 
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:

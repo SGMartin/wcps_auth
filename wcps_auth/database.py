@@ -26,7 +26,7 @@ def generate_servers_addresses(query_results: list) -> list:
     for candidate_server in query_results:
         ## Each result is a tuple of 4 fields
         server_id, addr, port, active = candidate_server
-        server_list.append((addr, port))
+        server_list.append((server_id, addr, port))
 
     return server_list
 
