@@ -1,42 +1,66 @@
+import asyncio
+import threading
+import logging
+
+# Ensure logging configuration is in place
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Session:
-    def __init__(self, u):
+    def __init__(self, entity):
         self.session_id = None
-        self.user_id = u.username
-        self.access_level = u.rights
+        self.entity_id = entity.username if hasattr(entity, 'username') else entity.id
+        self.access_level = entity.rights if hasattr(entity, 'rights') else entity.access_level
 
 class SessionManager:
-    def __init__(self):
-        self.sessions = {}
+    _instance = None
 
-    def add(self, user) -> None:
-        session_id = 0
-        while True:
-            session_id += 1
-            if session_id not in self.sessions:
-                break
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(SessionManager, cls).__new__(cls)
+            cls._instance.sessions = {}
+            cls._instance._lock = threading.Lock()  # Add a lock for thread safety
+        return cls._instance
 
-        user.session_id = session_id
-        self.sessions[session_id] = Session(user)
+    def add(self, entity) -> None:
+        with self._lock:
+            if hasattr(entity, 'session_id') and entity.session_id in self.sessions:
+                logging.warning(f"Session already exists for entity with ID {entity.session_id}")
+                return
+
+            session_id = 0
+            while session_id in self.sessions:
+                session_id += 1
+
+            entity.session_id = session_id
+            self.sessions[session_id] = Session(entity)
+            logging.info(f"Added session {session_id} for entity with ID {entity.session_id}")
 
     def get(self, session_id) -> Session:
-        return self.sessions.get(session_id)
+        with self._lock:
+            return self.sessions.get(session_id)
 
     def remove(self, session_id) -> None:
-        self.sessions.pop(session_id, None)
+        with self._lock:
+            if session_id in self.sessions:
+                self.sessions.pop(session_id)
+                logging.info(f"Removed session {session_id}")
+            else:
+                logging.warning(f"Session ID {session_id} not found")
+
+    def get_all_authorized(self) -> list:
+        with self._lock:
+            return [session.entity_id for session in self.sessions.values()]
+
+    def is_authorized(self, entity) -> bool:
+        with self._lock:
+            return entity.session_id in self.sessions
 
 UserSessions = SessionManager()
 
-def Authorize(user):
-    # use the manager to add a new session for the user
-    UserSessions.add(user)
+async def async_authorize(entity):
+    await asyncio.sleep(0)  # Simulate async operation
+    UserSessions.add(entity)
 
-def Remove(user):
-    # use the manager to remove the session with the given session ID
-    UserSessions.remove(user.session_id)
-
-def GetAllAuthorized() -> list:
-    return [session.user_id for session in UserSessions.sessions.values()]
-
-def IsAuthorized(user) -> bool:
-    return user.username in GetAllAuthorized()
+async def async_remove(entity):
+    await asyncio.sleep(0)  # Simulate async operation
+    UserSessions.remove(entity.session_id)
