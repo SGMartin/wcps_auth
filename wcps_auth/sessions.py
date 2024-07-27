@@ -1,6 +1,4 @@
 
-import networking.users
-
 class Session:
     def __init__(self, u):
         self.session_id = None
