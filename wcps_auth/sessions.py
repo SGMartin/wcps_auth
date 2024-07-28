@@ -85,10 +85,10 @@ class SessionManager:
         async with self._lock:
             return len(self._server_to_session)
 
-    async def get_authorized_users(self):
+    async def get_all_authorized_users(self):
         async with self._lock:
             return list(self._authorized_users)
 
-    async def get_authorized_servers(self):
+    async def get_all_authorized_servers(self):
         async with self._lock:
             return list(self._authorized_servers)

@@ -1,87 +1,93 @@
 import unittest
 import asyncio
-from wcps_auth.sessions import SessionManager  # Adjust the import if needed
+from wcps_auth.sessions import SessionManager  # Ensure this matches the import path for your SessionManager
 
-class TestSessionManager(unittest.IsolatedAsyncioTestCase):
+class TestSessionManager(unittest.TestCase):
 
-    async def asyncSetUp(self):
-        """Set up the test case environment."""
-        self.manager = SessionManager()
-        await self._reset_manager()
+    def setUp(self):
+        self.loop = asyncio.get_event_loop()
+        self.session_manager = SessionManager()
 
-    async def _reset_manager(self):
-        async with self.manager._lock:
-            self.manager._sessions.clear()
-            self.manager._user_to_session.clear()
-            self.manager._server_to_session.clear()
+    def tearDown(self):
+        SessionManager._instance = None
 
-    async def test_authenticate_player(self):
-        user_id = "player123"
-        session_id = await self.manager.authenticate_player(user_id)
-        self.assertIsInstance(session_id, str)
-        self.assertTrue(session_id)
-        self.assertEqual(await self.manager.get_session_id_for_user(user_id), session_id)
+    def test_singleton(self):
+        another_instance = SessionManager()
+        self.assertIs(self.session_manager, another_instance)
 
-    async def test_authenticate_server(self):
-        server_id = "server456"
-        session_id = await self.manager.authenticate_server(server_id)
-        self.assertIsInstance(session_id, str)
-        self.assertTrue(session_id)
-        self.assertEqual(await self.manager.get_session_id_for_server(server_id), session_id)
+    def test_authorize_player(self):
+        user_id = 'user123'
+        session_id = self.loop.run_until_complete(self.session_manager.authorize_player(user_id))
+        self.assertIsNotNone(session_id)
+        self.assertIn(user_id, self.loop.run_until_complete(self.session_manager.get_all_authorized_users()))
 
-    async def test_is_player_authenticated(self):
-        user_id = "player789"
-        self.assertFalse(await self.manager.is_player_authenticated(user_id))
-        await self.manager.authenticate_player(user_id)
-        self.assertTrue(await self.manager.is_player_authenticated(user_id))
+    def test_authorize_server(self):
+        server_id = 'server123'
+        session_id = self.loop.run_until_complete(self.session_manager.authorize_server(server_id))
+        self.assertIsNotNone(session_id)
+        self.assertIn(server_id, self.loop.run_until_complete(self.session_manager.get_all_authorized_servers()))
 
-    async def test_is_server_authenticated(self):
-        server_id = "server012"
-        self.assertFalse(await self.manager.is_server_authenticated(server_id))
-        await self.manager.authenticate_server(server_id)
-        self.assertTrue(await self.manager.is_server_authenticated(server_id))
+    def test_unauthorize_player(self):
+        user_id = 'user123'
+        self.loop.run_until_complete(self.session_manager.authorize_player(user_id))
+        self.loop.run_until_complete(self.session_manager.unauthorize_player(user_id))
+        self.assertNotIn(user_id, self.loop.run_until_complete(self.session_manager.get_all_authorized_users()))
 
-    async def test_get_user_id_for_session(self):
-        user_id = "playerabc"
-        session_id = await self.manager.authenticate_player(user_id)
-        retrieved_user_id = await self.manager.get_user_id_for_session(session_id)
-        self.assertEqual(user_id, retrieved_user_id)
+    def test_unauthorize_server(self):
+        server_id = 'server123'
+        self.loop.run_until_complete(self.session_manager.authorize_server(server_id))
+        self.loop.run_until_complete(self.session_manager.unauthorize_server(server_id))
+        self.assertNotIn(server_id, self.loop.run_until_complete(self.session_manager.get_all_authorized_servers()))
 
-    async def test_get_server_id_for_session(self):
-        server_id = "serverdef"
-        session_id = await self.manager.authenticate_server(server_id)
-        retrieved_server_id = await self.manager.get_server_id_for_session(session_id)
-        self.assertEqual(server_id, retrieved_server_id)
+    def test_get_session_id_for_user(self):
+        user_id = 'user123'
+        session_id = self.loop.run_until_complete(self.session_manager.authorize_player(user_id))
+        fetched_session_id = self.loop.run_until_complete(self.session_manager.get_session_id_for_user(user_id))
+        self.assertEqual(session_id, fetched_session_id)
 
-    async def test_authenticate_existing_player(self):
-        user_id = "player1234"
-        first_session_id = await self.manager.authenticate_player(user_id)
-        second_session_id = await self.manager.authenticate_player(user_id)
-        self.assertEqual(first_session_id, second_session_id)
+    def test_get_session_id_for_server(self):
+        server_id = 'server123'
+        session_id = self.loop.run_until_complete(self.session_manager.authorize_server(server_id))
+        fetched_session_id = self.loop.run_until_complete(self.session_manager.get_session_id_for_server(server_id))
+        self.assertEqual(session_id, fetched_session_id)
 
-    async def test_authenticate_existing_server(self):
-        server_id = "server5678"
-        first_session_id = await self.manager.authenticate_server(server_id)
-        second_session_id = await self.manager.authenticate_server(server_id)
-        self.assertEqual(first_session_id, second_session_id)
+    def test_get_user_id_for_session(self):
+        user_id = 'user123'
+        session_id = self.loop.run_until_complete(self.session_manager.authorize_player(user_id))
+        fetched_user_id = self.loop.run_until_complete(self.session_manager.get_user_id_for_session(session_id))
+        self.assertEqual(user_id, fetched_user_id)
 
-    async def test_get_authorized_player_count(self):
-        user_id = "player123"
-        await self.manager.authenticate_player(user_id)
-        count = await self.manager.get_authorized_player_count()
-        self.assertEqual(count, 1)
-        await self.manager.unauthorize_player(user_id)
-        count = await self.manager.get_authorized_player_count()
-        self.assertEqual(count, 0)
+    def test_get_server_id_for_session(self):
+        server_id = 'server123'
+        session_id = self.loop.run_until_complete(self.session_manager.authorize_server(server_id))
+        fetched_server_id = self.loop.run_until_complete(self.session_manager.get_server_id_for_session(session_id))
+        self.assertEqual(server_id, fetched_server_id)
 
-    async def test_get_authorized_server_count(self):
-        server_id = "server456"
-        await self.manager.authenticate_server(server_id)
-        count = await self.manager.get_authorized_server_count()
-        self.assertEqual(count, 1)
-        await self.manager.unauthorize_server(server_id)
-        count = await self.manager.get_authorized_server_count()
-        self.assertEqual(count, 0)
+    def test_is_player_authorized(self):
+        user_id = 'user123'
+        self.loop.run_until_complete(self.session_manager.authorize_player(user_id))
+        is_authorized = self.loop.run_until_complete(self.session_manager.is_player_authorized(user_id))
+        self.assertTrue(is_authorized)
 
-if __name__ == "__main__":
+    def test_is_server_authorized(self):
+        server_id = 'server123'
+        self.loop.run_until_complete(self.session_manager.authorize_server(server_id))
+        is_authorized = self.loop.run_until_complete(self.session_manager.is_server_authorized(server_id))
+        self.assertTrue(is_authorized)
+
+    def test_get_authorized_player_count(self):
+        user_ids = ['user123', 'user456', 'user789']
+        for user_id in user_ids:
+            self.loop.run_until_complete(self.session_manager.authorize_player(user_id))
+        count = self.loop.run_until_complete(self.session_manager.get_authorized_player_count())
+        self.assertEqual(count, len(user_ids))
+
+    def test_get_authorized_server_count(self):
+        server_ids = ['server123', 'server456', 'server789']
+        for server_id in server_ids:
+            self.loop.run_until_complete(self.session_manager.authorize_server(server_id))
+        count = self.loop.run_until_complete(self.session_manager.get_authorized_server_count())
+        self.assertEqual(count, len(server_ids))
+
+if __name__ == '__main__':
     unittest.main()

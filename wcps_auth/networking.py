@@ -225,18 +225,26 @@ class ServerList(wcps_core.packets.OutPacket):
             self.append(0)  # unknown
             self.append(u.rights)  # rights
             self.append(1)  # Old servers say to append 1.11025 for PF20, but seems to be working atm.
-            self.append(4)  # Maximum value of servers for 2008 client is 31
 
-            for i in range(4):
-                self.append(i)  # Server ID
-                self.append(f"Test {i}")
-                self.append("127.0.0.1")
-                self.append("5340")
-                self.append(100) ## Current population. For <3600, do fractions
-                self.append(0)
+            ## get all authorized servers
+            session_manager = SessionManager()
+            all_servers = session_manager.get_all_authorized_servers()
 
-            self.fill(-1, 4)  # unknown
-            self.append(0)  # unknown
+            # The 2008 client can handle up to 31 servers
+            self.append(session_manager.get_authorized_server_count())  
+
+            for s in all_servers:
+                self.append(s.id)  # Server ID
+                self.append(s.name)
+                self.append(s.address)
+                self.append(s.port)
+                ## Current pop. Assumed to be x/3600. In the future, maybe
+                ## do fractions for servers with smaller capacity
+                self.append(s.current_players) 
+                self.append(s.server_type)
+
+            self.fill(-1, 4)  # ID?/NAME?/MASTER?/Unknown
+            self.append(0)    # unknown
             self.append(0)  # unknown
 
 class InternalGameAuthentication(wcps_core.packets.OutPacket):
