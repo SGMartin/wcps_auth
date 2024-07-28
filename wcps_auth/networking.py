@@ -230,10 +230,10 @@ class ServerList(wcps_core.packets.OutPacket):
             for i in range(4):
                 self.append(i)  # Server ID
                 self.append(f"Test {i}")
-                self.append("0.0.0.0.0")
+                self.append("127.0.0.1")
                 self.append("5340")
-                self.append(100)
-                self.append(1)
+                self.append(100) ## Current population. For <3600, do fractions
+                self.append(0)
 
             self.fill(-1, 4)  # unknown
             self.append(0)  # unknown
