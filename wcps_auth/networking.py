@@ -95,16 +95,19 @@ class User:
             ## Clear the session just in case
             session_manager = SessionManager()
 
-            if await session_manager.is_player_authorized(self):
-                await session_manager.unauthorize_player(self)
+            if await session_manager.is_user_authorized(self.username):
+                await session_manager.unauthorize_user(self.username)
 
     
-    def authorize(self, username: str, displayname: str, rights: int, session_id:int):
+    async def authorize(self, username: str, displayname: str, rights: int):
         self.username = username
         self.displayname = displayname
         self.rights = rights
         self.authorized = True
+        session_manager = SessionManager()
+        session_id = await session_manager.authorize_user(self)
         self.session_id = session_id
+
 
 class GameServer:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -113,7 +116,7 @@ class GameServer:
         self.writer = writer
         
         ## Actual game server data
-        self.id = 0
+        self.id = -1
         self.name = ""
         self.server_type = wcps_core.constants.ServerTypes.NONE
         self.current_players = 0
@@ -134,14 +137,18 @@ class GameServer:
         asyncio.create_task(self.send(self._connection))
         asyncio.create_task(self.listen())
 
-    def authorize(self, server_name: str, server_id:int, server_type: int, current_players: int, max_players: int, session_id: str) -> None:
-        self.name = server_name,
-        self.id = server_id,
+    async def authorize(self, server_name: str, server_id:str, server_type: int, current_players: int, max_players: int) -> None:
+        self.name = server_name
+        self.id = server_id
         self.authorized = True
-        self.session_id = session_id
         self.max_players = max_players
         self.current_players = current_players
         self.server_type =  server_type
+        
+        ## Add the user to session manager
+        session_manager = SessionManager()
+        session_id = await session_manager.authorize_server(self)
+        self.session_id = session_id
 
     async def listen(self):
         while True:
@@ -181,8 +188,8 @@ class GameServer:
             self.authorized = False
             ## Clear the session just in case
             session_manager = SessionManager()
-            if await session_manager.is_server_authorized(self):
-                await session_manager.unauthorize_server(self)
+            if await session_manager.is_server_authorized(self.id):
+                await session_manager.unauthorize_server(self.id)
 
 
 class Launcher(wcps_core.packets.OutPacket):
@@ -227,12 +234,14 @@ class ServerList(wcps_core.packets.OutPacket):
 
             ## get all authorized servers
             session_manager = SessionManager()
-            all_servers = session_manager.get_all_authorized_servers()
+            all_servers_sessions = session_manager.get_all_authorized_servers()
 
             # The 2008 client can handle up to 31 servers
-            self.append(len(all_servers)) 
-            print(all_servers)
-            for s in all_servers:
+            self.append(len(all_servers_sessions)) 
+
+            for session in all_servers_sessions:
+                s = session["server"] # Get the actual server
+                
                 self.append(s.id)  # Server ID
                 self.append(s.name)
                 self.append(s.address)
@@ -317,19 +326,17 @@ class ServerListHandler(PacketHandler):
 
         ## check if a session already exists for this player
         session_manager = SessionManager()
-        is_authorized = await session_manager.is_player_authorized(user)
+        is_authorized = await session_manager.is_user_authorized(this_user["username"])
 
         ## The user is already logged in
         if is_authorized:
             await user.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
         else:
             ## Authenticate it and let him log!
-            user_session_id = await session_manager.authorize_player(user)
-            user.authorize(
+            await user.authorize(
                 username=input_id,
                 displayname=this_user["displayname"],
-                rights=this_user["rights"],
-                session_id = user_session_id
+                rights=this_user["rights"]
             )
             await user.send(ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u=user).build())
 
@@ -345,7 +352,7 @@ class GameServerAuthHandler(PacketHandler):
         ## Check if the auth server is already full before anything else
         session_manager = SessionManager()
 
-        servers_registered = await session_manager.get_authorized_server_count()
+        servers_registered = len(session_manager.get_all_authorized_servers())
 
         if servers_registered >= 31:
             logging.error(f"Maximum limit of servers reached. Rejecting...")
@@ -364,6 +371,9 @@ class GameServerAuthHandler(PacketHandler):
             logging.error(f"Invalid server name for ID {server_id} at {server_addr}")
             return
         
+        if not server_id or not server_id.isalnum():
+            logging.error(f"Invalid server ID {server_id}")
+
         if not current_players.isdigit() or not max_players.isdigit():
             logging.error(f"Invalid value/s reported ¨{current_players}/{max_players}")
             return
@@ -392,24 +402,22 @@ class GameServerAuthHandler(PacketHandler):
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
             return
 
-        is_server_authorized = await session_manager.is_server_authorized(server)
+        is_server_authorized = await session_manager.is_server_authorized(server_id)
 
         if is_server_authorized:
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED).build())
             logging.info(f"Server {server_addr} already registered")
 
         else:
-            server_session_id = await session_manager.authorize_server(server)
-            server.authorize(
+            await server.authorize(
                 server_name=server_name,
-                server_id=int(server_id),
+                server_id=server_id,
                 server_type=int(server_type),
                 current_players=int(current_players),
-                max_players=int(max_players),
-                session_id=server_session_id
+                max_players=int(max_players)
             )
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SUCCESS, server).build())
-            logging.info(f"Server {server_addr} authenticated as {server_session_id}")
+            logging.info(f"Server {server_addr} authenticated as {server.session_id}")
 
 
 

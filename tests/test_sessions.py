@@ -1,26 +1,14 @@
 import unittest
 import asyncio
-from wcps_auth.sessions import SessionManager  # Ensure this matches the import path for your SessionManager
+from wcps_auth.sessions import SessionManager
 
 class MockUser:
-    def __init__(self, user_id):
-        self.user_id = user_id
-
-    def __eq__(self, other):
-        return isinstance(other, MockUser) and self.user_id == other.user_id
-
-    def __hash__(self):
-        return hash(self.user_id)
+    def __init__(self, username):
+        self.username = username
 
 class MockServer:
     def __init__(self, server_id):
-        self.server_id = server_id
-
-    def __eq__(self, other):
-        return isinstance(other, MockServer) and self.server_id == other.server_id
-
-    def __hash__(self):
-        return hash(self.server_id)
+        self.id = server_id
 
 
 class TestSessionManager(unittest.TestCase):
@@ -30,85 +18,50 @@ class TestSessionManager(unittest.TestCase):
         self.session_manager = SessionManager()
 
     def tearDown(self):
+        # Clear the singleton instance to ensure a fresh state for each test
         SessionManager._instance = None
 
     def test_singleton(self):
         another_instance = SessionManager()
         self.assertIs(self.session_manager, another_instance)
 
-    def test_authorize_player(self):
+    def test_authorize_user(self):
         user = MockUser('user123')
-        session_id = self.loop.run_until_complete(self.session_manager.authorize_player(user))
+        session_id = self.loop.run_until_complete(self.session_manager.authorize_user(user))
         self.assertIsNotNone(session_id)
-        self.assertIn(user, self.session_manager.get_all_authorized_users())
+        self.assertTrue(self.loop.run_until_complete(self.session_manager.is_user_authorized(user.username)))
 
     def test_authorize_server(self):
-        server = MockServer('server123')
+        server = MockServer(123)
         session_id = self.loop.run_until_complete(self.session_manager.authorize_server(server))
         self.assertIsNotNone(session_id)
-        self.assertIn(server, self.session_manager.get_all_authorized_servers())
+        self.assertTrue(self.loop.run_until_complete(self.session_manager.is_server_authorized(server.id)))
 
-    def test_unauthorize_player(self):
+    def test_unauthorize_user(self):
         user = MockUser('user123')
-        self.loop.run_until_complete(self.session_manager.authorize_player(user))
-        self.loop.run_until_complete(self.session_manager.unauthorize_player(user))
-        self.assertNotIn(user, self.session_manager.get_all_authorized_users())
+        self.loop.run_until_complete(self.session_manager.authorize_user(user))
+        self.loop.run_until_complete(self.session_manager.unauthorize_user(user.username))
+        self.assertFalse(self.loop.run_until_complete(self.session_manager.is_user_authorized(user.username)))
 
     def test_unauthorize_server(self):
-        server = MockServer('server123')
+        server = MockServer(123)
         self.loop.run_until_complete(self.session_manager.authorize_server(server))
-        self.loop.run_until_complete(self.session_manager.unauthorize_server(server))
-        self.assertNotIn(server, self.session_manager.get_all_authorized_servers())
+        self.loop.run_until_complete(self.session_manager.unauthorize_server(server.id))
+        self.assertFalse(self.loop.run_until_complete(self.session_manager.is_server_authorized(server.id)))
 
-    def test_get_session_id_for_user(self):
-        user = MockUser('user123')
-        session_id = self.loop.run_until_complete(self.session_manager.authorize_player(user))
-        fetched_session_id = self.loop.run_until_complete(self.session_manager.get_session_id_for_user(user))
-        self.assertEqual(session_id, fetched_session_id)
-
-    def test_get_session_id_for_server(self):
-        server = MockServer('server123')
-        session_id = self.loop.run_until_complete(self.session_manager.authorize_server(server))
-        fetched_session_id = self.loop.run_until_complete(self.session_manager.get_session_id_for_server(server))
-        self.assertEqual(session_id, fetched_session_id)
-
-    def test_get_user_for_session(self):
-        user = MockUser('user123')
-        session_id = self.loop.run_until_complete(self.session_manager.authorize_player(user))
-        fetched_user = self.loop.run_until_complete(self.session_manager.get_user_for_session(session_id))
-        self.assertEqual(user, fetched_user)
-
-    def test_get_server_for_session(self):
-        server = MockServer('server123')
-        session_id = self.loop.run_until_complete(self.session_manager.authorize_server(server))
-        fetched_server = self.loop.run_until_complete(self.session_manager.get_server_for_session(session_id))
-        self.assertEqual(server, fetched_server)
-
-    def test_is_player_authorized(self):
-        user = MockUser('user123')
-        self.loop.run_until_complete(self.session_manager.authorize_player(user))
-        is_authorized = self.loop.run_until_complete(self.session_manager.is_player_authorized(user))
-        self.assertTrue(is_authorized)
-
-    def test_is_server_authorized(self):
-        server = MockServer('server123')
-        self.loop.run_until_complete(self.session_manager.authorize_server(server))
-        is_authorized = self.loop.run_until_complete(self.session_manager.is_server_authorized(server))
-        self.assertTrue(is_authorized)
-
-    def test_get_authorized_player_count(self):
-        users = [MockUser('user123'), MockUser('user456'), MockUser('user789')]
+    def test_get_all_authorized_users(self):
+        users = [MockUser('user123'), MockUser('user456')]
         for user in users:
-            self.loop.run_until_complete(self.session_manager.authorize_player(user))
-        count = self.loop.run_until_complete(self.session_manager.get_authorized_player_count())
-        self.assertEqual(count, len(users))
+            self.loop.run_until_complete(self.session_manager.authorize_user(user))
+        authorized_users = self.session_manager.get_all_authorized_users()
+        self.assertEqual(len(authorized_users), len(users))
 
-    def test_get_authorized_server_count(self):
-        servers = [MockServer('server123'), MockServer('server456'), MockServer('server789')]
+    def test_get_all_authorized_servers(self):
+        servers = [MockServer(123), MockServer(456)]
         for server in servers:
             self.loop.run_until_complete(self.session_manager.authorize_server(server))
-        count = self.loop.run_until_complete(self.session_manager.get_authorized_server_count())
-        self.assertEqual(count, len(servers))
+        authorized_servers = self.session_manager.get_all_authorized_servers()
+        self.assertEqual(len(authorized_servers), len(servers))
 
 if __name__ == '__main__':
     unittest.main()
