@@ -95,8 +95,8 @@ class User:
             ## Clear the session just in case
             session_manager = SessionManager()
 
-            if await session_manager.is_player_authorized(self.username):
-                await session_manager.unauthorize_player(self.username)
+            if await session_manager.is_player_authorized(self):
+                await session_manager.unauthorize_player(self)
 
     
     def authorize(self, username: str, displayname: str, rights: int, session_id:int):
@@ -181,9 +181,8 @@ class GameServer:
             self.authorized = False
             ## Clear the session just in case
             session_manager = SessionManager()
-
-            if await session_manager.is_server_authorized(self.id):
-                await session_manager.unauthorize_server(self.id)
+            if await session_manager.is_server_authorized(self):
+                await session_manager.unauthorize_server(self)
 
 
 class Launcher(wcps_core.packets.OutPacket):
@@ -231,8 +230,8 @@ class ServerList(wcps_core.packets.OutPacket):
             all_servers = session_manager.get_all_authorized_servers()
 
             # The 2008 client can handle up to 31 servers
-            self.append(session_manager.get_authorized_server_count())  
-
+            self.append(len(all_servers)) 
+            print(all_servers)
             for s in all_servers:
                 self.append(s.id)  # Server ID
                 self.append(s.name)
@@ -318,14 +317,14 @@ class ServerListHandler(PacketHandler):
 
         ## check if a session already exists for this player
         session_manager = SessionManager()
-        is_authorized = await session_manager.is_player_authorized(this_user["username"])
+        is_authorized = await session_manager.is_player_authorized(user)
 
         ## The user is already logged in
         if is_authorized:
             await user.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
         else:
             ## Authenticate it and let him log!
-            user_session_id = await session_manager.authorize_player(this_user["username"])
+            user_session_id = await session_manager.authorize_player(user)
             user.authorize(
                 username=input_id,
                 displayname=this_user["displayname"],
@@ -393,14 +392,14 @@ class GameServerAuthHandler(PacketHandler):
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
             return
 
-        is_server_authorized = await session_manager.is_server_authorized(server_id)
+        is_server_authorized = await session_manager.is_server_authorized(server)
 
         if is_server_authorized:
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED).build())
             logging.info(f"Server {server_addr} already registered")
 
         else:
-            server_session_id = await session_manager.authorize_server(server_id)
+            server_session_id = await session_manager.authorize_server(server)
             server.authorize(
                 server_name=server_name,
                 server_id=int(server_id),
