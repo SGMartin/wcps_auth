@@ -369,12 +369,16 @@ class GameServerAuthHandler(PacketHandler):
 
         if len(server_name) < 3 or not server_name.isalnum():
             logging.error(f"Invalid server name for ID {server_id} at {server_addr}")
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SERVER_ERROR_OTHER).build())
             return
         
         if not server_id or not server_id.isalnum():
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SERVER_ERROR_OTHER).build())
             logging.error(f"Invalid server ID {server_id}")
+            return
 
         if not current_players.isdigit() or not max_players.isdigit():
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SERVER_ERROR_OTHER).build())
             logging.error(f"Invalid value/s reported ¨{current_players}/{max_players}")
             return
 
