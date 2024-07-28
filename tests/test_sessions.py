@@ -1,14 +1,27 @@
 import unittest
 import asyncio
-from wcps_auth.sessions import SessionManager
+from wcps_auth.sessions import SessionManager  # Ensure this matches the import path for your SessionManager
 
 class MockUser:
     def __init__(self, user_id):
         self.user_id = user_id
 
+    def __eq__(self, other):
+        return isinstance(other, MockUser) and self.user_id == other.user_id
+
+    def __hash__(self):
+        return hash(self.user_id)
+
 class MockServer:
     def __init__(self, server_id):
         self.server_id = server_id
+
+    def __eq__(self, other):
+        return isinstance(other, MockServer) and self.server_id == other.server_id
+
+    def __hash__(self):
+        return hash(self.server_id)
+
 
 class TestSessionManager(unittest.TestCase):
 
