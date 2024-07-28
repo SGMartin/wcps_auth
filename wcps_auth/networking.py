@@ -114,69 +114,25 @@ class GameServer:
         
         ## Actual game server data
         self.id = 0
-        self._name = ""
-        self._server_type = wcps_core.constants.ServerTypes.NONE
-        self._current_players = 0
-        self._max_players = 0
+        self.name = ""
+        self.server_type = wcps_core.constants.ServerTypes.NONE
+        self.current_players = 0
+        self.max_players = 0
         self.authorized = False
         self.session_id = -1
         
+        if self.max_players > 3600:
+            self.max_players = 3600
+        
+        if self.current_players < 0:
+            self.current_players = 0
+
         ## Send a connection packet
         self.xor_key_send = wcps_core.constants.InternalKeys.XOR_AUTH_SEND
         self.xor_key_receive = wcps_core.constants.InternalKeys.XOR_GAME_SEND
         self._connection = wcps_core.packets.Connection(xor_key=self.xor_key_send).build()
         asyncio.create_task(self.send(self._connection))
         asyncio.create_task(self.listen())
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, new_name):
-        self._name = new_name
-
-    @property
-    def server_type(self):
-        return self._server_type
-
-    @server_type.setter
-    def server_type(self, new_type: wcps_core.constants.ServerTypes):
-        self._server_type = new_type
-
-    @property
-    def max_players(self):
-        return self._max_players
-
-    @max_players.setter
-    def max_players(self, max_players: int):
-        try:
-            max_players = int(max_players)
-            if not (0 <= max_players <= 3600):
-                logging.error("max players must be in the 0-3600 range")
-                await self.disconnect()
-            else:
-                self._max_players = max_players
-        except ValueError:
-            logging.error("Cannot cast max players to int")
-            await self.disconnect()
-
-    @property
-    def current_players(self):
-        return self._current_players
-
-    @current_players.setter
-    def current_players(self, players: int):
-        try:
-            players = int(players)
-            if not (0 <= players <= self._max_players):
-                logging.error("Invalid current players.")
-                await self.disconnect()
-            else:
-                self._current_players = players
-        except ValueError:
-            logging.error("Cannot cast current players to int")
-            await self.disconnect()
 
     def authorize(self, server_name: str, server_id:int, server_type: int, current_players: int, max_players: int, session_id: str) -> None:
         self.name = server_name,
@@ -226,8 +182,8 @@ class GameServer:
             ## Clear the session just in case
             session_manager = SessionManager()
 
-              if await session_manager.is_server_authenticated(self.id):
-                 await session_manager.unauthorize_server(self.id)
+            if await session_manager.is_server_authenticated(self.id):
+                await session_manager.unauthorize_server(self.id)
 
 
 class Launcher(wcps_core.packets.OutPacket):
