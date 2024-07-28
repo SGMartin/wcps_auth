@@ -392,7 +392,7 @@ class GameServerAuthHandler(PacketHandler):
             logging.info(f"Server {server_addr} already registered")
 
         else:
-            server_session_id = await session_manager.authorized_server(server_id)
+            server_session_id = await session_manager.authorize_server(server_id)
             server.authorize(
                 server_name=server_name,
                 server_id=int(server_id),
