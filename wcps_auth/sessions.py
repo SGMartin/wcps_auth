@@ -70,3 +70,11 @@ class SessionManager:
             session_id = self._server_to_session.pop(server_id, None)
             if session_id:
                 self._sessions.pop(session_id, None)
+    
+    async def get_authorized_player_count(self):
+        async with self._lock:
+            return len(self._user_to_session)
+
+    async def get_authorized_server_count(self):
+        async with self._lock:
+            return len(self._server_to_session)

@@ -335,6 +335,16 @@ class GameServerAuthHandler(PacketHandler):
         if error_code != wcps_core.constants.ErrorCodes.SUCCESS:
             return
 
+        ## Check if the auth server is already full before anything else
+        session_manager = SessionManager()
+
+        servers_registered = await session_manager.get_authorized_server_count()
+
+        if servers_registered >= 31:
+            logging.error(f"Maximum limit of servers reached. Rejecting...")
+            await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SERVER_LIMIT_REACHED).build())
+            return
+        
         server_id = self.get_block(1)
         server_name = self.get_block(2)
         server_addr = self.get_block(3)
@@ -375,7 +385,6 @@ class GameServerAuthHandler(PacketHandler):
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
             return
 
-        session_manager = SessionManager()
         is_server_authenticated = await session_manager.is_server_authenticated(server_id)
 
         if is_server_authenticated:
