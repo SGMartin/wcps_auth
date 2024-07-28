@@ -19,6 +19,7 @@ class ClientXorKeys:
 
 class PacketList:
     INTERNALGAMEAUTHENTICATION = wcps_core.packets.PacketList.GameServerAuthentication
+    INTERNALGAMESTATUS = wcps_core.packets.PacketList.GameServerStatus
     LAUNCHER = 0x1010
     SERVER_LIST = 0x1100
     NICKNAME = 0x1101
@@ -301,16 +302,19 @@ class ServerListHandler(PacketHandler):
 
         if len(input_id) < 3 or not input_id.isalnum():
             await user.send(ServerList(ServerList.ErrorCodes.ENTER_ID_ERROR).build())
+            await user.disconnect()
             return
 
         if len(input_pw) < 3:
             await user.send(ServerList(ServerList.ErrorCodes.ENTER_PASSWORD_ERROR).build())
+            await user.disconnect()
             return
 
         this_user = await get_user_details(input_id)
 
         if not this_user:
             await user.send(ServerList(ServerList.ErrorCodes.WRONG_USER).build())
+            await user.disconnect()
             return
 
         password_to_hash = f"{input_pw}{this_user['salt']}".encode("utf-8")
@@ -318,10 +322,12 @@ class ServerListHandler(PacketHandler):
 
         if this_user["password"] != hashed_password:
             await user.send(ServerList(ServerList.ErrorCodes.WRONG_PW).build())
+            await user.disconnect()
             return
 
         if this_user["rights"] == 0:
             await user.send(ServerList(ServerList.ErrorCodes.BANNED).build())
+            await user.disconnect()
             return
 
         ## check if a session already exists for this player
@@ -331,6 +337,7 @@ class ServerListHandler(PacketHandler):
         ## The user is already logged in
         if is_authorized:
             await user.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
+            await user.disconnect()
         else:
             ## Authenticate it and let him log!
             await user.authorize(
@@ -339,6 +346,8 @@ class ServerListHandler(PacketHandler):
                 rights=this_user["rights"]
             )
             await user.send(ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u=user).build())
+            ## Can be safely disconnect after this packet
+            await user.disconnect()
 
 
 class GameServerAuthHandler(PacketHandler):
@@ -370,16 +379,19 @@ class GameServerAuthHandler(PacketHandler):
         if len(server_name) < 3 or not server_name.isalnum():
             logging.error(f"Invalid server name for ID {server_id} at {server_addr}")
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SERVER_ERROR_OTHER).build())
+            await server.disconnect()
             return
         
         if not server_id or not server_id.isalnum():
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SERVER_ERROR_OTHER).build())
             logging.error(f"Invalid server ID {server_id}")
+            await server.disconnect()
             return
 
         if not current_players.isdigit() or not max_players.isdigit():
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SERVER_ERROR_OTHER).build())
             logging.error(f"Invalid value/s reported ¨{current_players}/{max_players}")
+            await server.disconnect()
             return
 
         valid_servers = [
@@ -394,6 +406,7 @@ class GameServerAuthHandler(PacketHandler):
         if not (server_type.isdigit() and int(server_type) in valid_servers):
             logging.error(f"Invalid server type: {server_type}")
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.INVALID_SERVER_TYPE).build())
+            await server.disconnect()
             return
         
         ## get list of servers registered in the DB
@@ -404,6 +417,7 @@ class GameServerAuthHandler(PacketHandler):
         if not (server_id, server_addr, server_port) in all_active_servers:
             logging.error(f"Unregistered server: {server_addr}:{server_port}")
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
+            await server.disconnect()
             return
 
         is_server_authorized = await session_manager.is_server_authorized(server_id)
@@ -411,6 +425,7 @@ class GameServerAuthHandler(PacketHandler):
         if is_server_authorized:
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED).build())
             logging.info(f"Server {server_addr} already registered")
+            await server.disconnect()
 
         else:
             await server.authorize(
@@ -424,9 +439,20 @@ class GameServerAuthHandler(PacketHandler):
             logging.info(f"Server {server_addr} authenticated as {server.session_id}")
 
 
-class GameServerStatus(PacketHandler):
+class GameServerStatusHandler(PacketHandler):
     async def process(self, server) -> None:
-        print("Received ping from server")
+        ## Check if the server is authorized
+        if server.authorized:
+            server_time = self.get_block(1)
+            server_id   = self.get_block(2)
+            current_players = self.get_block(3)
+            current_rooms = self.get_block(4)
+            
+            ##TODO: Update more data
+            server.current_players = int(current_players)
+        else:
+            logging.info(f"Ping from unauthorized server ignored")
+            await server.disconnect()
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:
@@ -440,5 +466,6 @@ def get_handler_for_packet(packet_id: int) -> PacketHandler:
 handlers = {
     PacketList.LAUNCHER: LauncherHandler,
     PacketList.SERVER_LIST: ServerListHandler,
-    PacketList.INTERNALGAMEAUTHENTICATION: GameServerAuthHandler
+    PacketList.INTERNALGAMEAUTHENTICATION: GameServerAuthHandler,
+    PacketList.INTERNALGAMESTATUS: GameServerStatusHandler
 }
