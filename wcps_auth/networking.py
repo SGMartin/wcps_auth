@@ -424,6 +424,9 @@ class GameServerAuthHandler(PacketHandler):
             logging.info(f"Server {server_addr} authenticated as {server.session_id}")
 
 
+class GameServerAuthHandler(PacketHandler):
+    async def process(self, server) -> None:
+        print("Received ping from server")
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:
