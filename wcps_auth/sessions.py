@@ -10,6 +10,7 @@ class SessionManager:
             cls._instance = super(SessionManager, cls).__new__(cls)
             cls._instance._user_sessions = {}
             cls._instance._server_sessions = {}
+            cls._instance._user_session_id_counter = -32768  # Initialize counter within the allowed range
         return cls._instance
 
     async def authorize_user(self, user):
@@ -17,12 +18,19 @@ class SessionManager:
             if user.username in self._user_sessions:
                 return self._user_sessions[user.username]['session_id']
 
-            session_id = str(uuid.uuid4())
+            # Generate a new session ID within the range [-32767, 32767]
+            session_id = self._generate_user_session_id()
             self._user_sessions[user.username] = {
                 'user': user,
                 'session_id': session_id
             }
             return session_id
+
+    def _generate_user_session_id(self):
+        self._user_session_id_counter += 1
+        if self._user_session_id_counter > 32767:
+            self._user_session_id_counter = -32768
+        return self._user_session_id_counter
 
     async def authorize_server(self, server):
         async with self._lock:
