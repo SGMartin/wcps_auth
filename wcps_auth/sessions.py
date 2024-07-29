@@ -35,7 +35,7 @@ class SessionManager:
         for _ in range(65536):  # 65536 is the total number of unique session IDs available
             self._user_session_id_counter += 1
             if self._user_session_id_counter > 32767:
-                self._user_session_id_counter = -32768
+                self._user_session_id_counter = -32767
 
             if self._user_session_id_counter not in used_ids:
                 return self._user_session_id_counter
