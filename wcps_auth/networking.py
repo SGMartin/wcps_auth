@@ -20,6 +20,7 @@ class ClientXorKeys:
 class PacketList:
     INTERNALGAMEAUTHENTICATION = wcps_core.packets.PacketList.GameServerAuthentication
     INTERNALGAMESTATUS = wcps_core.packets.PacketList.GameServerStatus
+    INTERNALPLAYERAUTHENTICATION = wcps_core.packets.PacketList.ClientAuthentication
     LAUNCHER = 0x1010
     SERVER_LIST = 0x1100
     NICKNAME = 0x1101
@@ -454,6 +455,18 @@ class GameServerStatusHandler(PacketHandler):
             logging.info(f"Ping from unauthorized server ignored")
             await server.disconnect()
 
+class InternalClientAuthRequestHandler(PacketHandler):
+    async def process(self, server) -> None:
+        if server.authorized:
+            self._error_code = self.get_block(0)
+            self._reported_session_id = self.get_block(1)
+            self._reported_username = self.get_block(2)
+            self._reported_rights = self.get_block(3)
+            pass
+        else:
+            logging.info(f"Unauthorized client authorization request from {server.address}")
+            server.disconnect()
+
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     if packet_id in handlers:
         ## return a new initialized instance of the handler
@@ -467,5 +480,6 @@ handlers = {
     PacketList.LAUNCHER: LauncherHandler,
     PacketList.SERVER_LIST: ServerListHandler,
     PacketList.INTERNALGAMEAUTHENTICATION: GameServerAuthHandler,
-    PacketList.INTERNALGAMESTATUS: GameServerStatusHandler
+    PacketList.INTERNALGAMESTATUS: GameServerStatusHandler,
+    PacketList.INTERNALPLAYERAUTHENTICATION: InternalClientAuthRequestHandler
 }
