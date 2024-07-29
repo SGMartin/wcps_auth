@@ -18,7 +18,11 @@ class SessionManager:
             if user.username in self._user_sessions:
                 return self._user_sessions[user.username]['session_id']
 
+            if len(self._user_sessions) >= 65536:  # Check if all possible session IDs are used
+                raise Exception("No available session IDs for users")
+
             # Generate a new session ID within the range [-32767, 32767]
+            # CP1 clients only goes that far
             session_id = self._generate_user_session_id()
             self._user_sessions[user.username] = {
                 'user': user,
@@ -27,10 +31,17 @@ class SessionManager:
             return session_id
 
     def _generate_user_session_id(self):
-        self._user_session_id_counter += 1
-        if self._user_session_id_counter > 32767:
-            self._user_session_id_counter = -32768
-        return self._user_session_id_counter
+        used_ids = {session['session_id'] for session in self._user_sessions.values()}
+        for _ in range(65536):  # 65536 is the total number of unique session IDs available
+            self._user_session_id_counter += 1
+            if self._user_session_id_counter > 32767:
+                self._user_session_id_counter = -32768
+
+            if self._user_session_id_counter not in used_ids:
+                return self._user_session_id_counter
+    
+        raise Exception("No available session IDs for users")
+
 
     async def authorize_server(self, server):
         async with self._lock:
