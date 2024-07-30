@@ -105,7 +105,10 @@ class User:
 
 class GameServer:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        self.address, self.port = reader._transport.get_extra_info("peername")
+
+        ## Network data
+        self.address = None
+        self.port = None
         self.reader = reader
         self.writer = writer
         
@@ -234,8 +237,7 @@ class ServerList(wcps_core.packets.OutPacket):
             self.append(len(all_servers_sessions)) 
 
             for session in all_servers_sessions:
-                s = session["server"] # Get the actual server
-                
+                s = session["server"] # Get the actual server 
                 self.append(s.id)  # Server ID
                 self.append(s.name)
                 self.append(s.address)
@@ -440,6 +442,9 @@ class GameServerAuthHandler(PacketHandler):
             await server.disconnect()
 
         else:
+            ##TODO: Move this to authorize and improve the data structure
+            server.address = server_addr
+            server.port = server_port
             await server.authorize(
                 server_name=server_name,
                 server_id=server_id,
@@ -448,7 +453,7 @@ class GameServerAuthHandler(PacketHandler):
                 max_players=int(max_players)
             )
             await server.send(InternalGameAuthentication(wcps_core.constants.ErrorCodes.SUCCESS, server).build())
-            logging.info(f"Server {server_addr} authenticated as {server.session_id}")
+            logging.info(f"Server {server.address}:{server.port} authenticated as {server.session_id}")
 
 
 class GameServerStatusHandler(PacketHandler):
