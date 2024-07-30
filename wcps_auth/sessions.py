@@ -26,7 +26,8 @@ class SessionManager:
             session_id = self._generate_user_session_id()
             self._user_sessions[user.username] = {
                 'user': user,
-                'session_id': session_id
+                'session_id': session_id,
+                'is_activated': False
             }
             return session_id
 
@@ -41,7 +42,6 @@ class SessionManager:
                 return self._user_session_id_counter
     
         raise Exception("No available session IDs for users")
-
 
     async def authorize_server(self, server):
         async with self._lock:
@@ -78,3 +78,25 @@ class SessionManager:
 
     def get_all_authorized_servers(self):
         return list(self._server_sessions.values())
+    
+    async def get_user_session_id(self, username):
+        async with self._lock:
+            if username in self._user_sessions:
+                return self._user_sessions[username]['session_id']
+            else:
+                return None
+    
+    async def get_user_by_session_id(self, session_id):
+        async with self._lock:
+            for session in self._user_sessions.values():
+                if session['session_id'] == session_id:
+                    return session['user']
+            return None
+    
+    async def activate_user_session(self, session_id):
+        async with self._lock:
+            for session in self._user_sessions.values():
+                if session['session_id'] == session_id:
+                    session['is_activated'] = True
+                    return True
+            return False
