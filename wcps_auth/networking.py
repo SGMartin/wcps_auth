@@ -92,15 +92,7 @@ class User:
 
     async def disconnect(self):
         self.writer.close()
-        ##TODO: THIIIIS
-        # if self.authorized:
-        #     self.authorized = False
-        #     ## Clear the session just in case
-        #     session_manager = SessionManager()
-        #     if await session_manager.is_user_authorized(self.username):
-        #         await session_manager.unauthorize_user(self.username)
 
-    
     async def authorize(self, username: str, displayname: str, rights: int):
         self.username = username
         self.displayname = displayname
@@ -355,7 +347,6 @@ class ServerListHandler(PacketHandler):
         if not is_authorized or (is_authorized and session_id is not None and not is_activated_session):
             if is_authorized: ## destroy the previous session first
                 await session_manager.unauthorize_user(this_user["username"])
-                print("RELOG")
             
             ## first time authorize or reauthorize
             await user.authorize(
@@ -371,7 +362,7 @@ class ServerListHandler(PacketHandler):
                 await u.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
             else:
                 await u.send(ServerList(ServerList.ErrorCodes.ILLEGAL_EXCEPTION).build())
-                
+
             await u.disconnect()
 
 
@@ -483,9 +474,9 @@ class InternalClientAuthRequestHandler(PacketHandler):
     async def process(self, server) -> None:
         if server.authorized:
             error_code = self.get_block(0)
-            reported_session_id = self.get_block(1)
+            reported_session_id = int(self.get_block(1))
             reported_username = self.get_block(2)
-            reported_rights = self.get_block(3)
+            reported_rights = int(self.get_block(3))
 
             session_manager = SessionManager()
             has_login_session = await session_manager.is_user_authorized(reported_username)
@@ -501,8 +492,8 @@ class InternalClientAuthRequestHandler(PacketHandler):
                 if is_activated_session:
                     await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED).build())
                 else:
-                    session_manager.activate_user_session(stored_session_id)
-                    this_user = await session_manager.get_user_by_session_id(reported_session_id)
+                    await session_manager.activate_user_session(stored_session_id)
+                    this_user = await session_manager.get_user_by_session_id(stored_session_id)
                     await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.SUCCESS, this_user).build())
             else:
                 await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
