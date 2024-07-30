@@ -492,9 +492,9 @@ class InternalClientAuthRequestHandler(PacketHandler):
 
             if reported_session_id == stored_session_id:
                 if is_activated_session:
-                    error_code = wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED
+                    error_to_report = wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED
                 else:
-                    error_code = wcps_core.constants.ErrorCodes.SUCCESS
+                    error_to_report = wcps_core.constants.ErrorCodes.SUCCESS
                     ## Activate the sesssion
                     await session_manager.activate_user_session(stored_session_id)
             else:
