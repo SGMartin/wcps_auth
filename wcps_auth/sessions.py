@@ -100,3 +100,10 @@ class SessionManager:
                     session['is_activated'] = True
                     return True
             return False
+
+    async def is_user_session_activated(self, session_id):
+        async with self._lock:
+            for session in self._user_sessions.values():
+                if session['session_id'] == session_id:
+                    return session['is_activated']
+            return False

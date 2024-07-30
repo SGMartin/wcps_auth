@@ -92,13 +92,13 @@ class User:
 
     async def disconnect(self):
         self.writer.close()
-        if self.authorized:
-            self.authorized = False
-            ## Clear the session just in case
-            session_manager = SessionManager()
-
-            if await session_manager.is_user_authorized(self.username):
-                await session_manager.unauthorize_user(self.username)
+        ##TODO: THIIIIS
+        # if self.authorized:
+        #     self.authorized = False
+        #     ## Clear the session just in case
+        #     session_manager = SessionManager()
+        #     if await session_manager.is_user_authorized(self.username):
+        #         await session_manager.unauthorize_user(self.username)
 
     
     async def authorize(self, username: str, displayname: str, rights: int):
@@ -269,7 +269,20 @@ class InternalGameAuthentication(wcps_core.packets.OutPacket):
             self.append(wcps_core.constants.ErrorCodes.SUCCESS)
             self.append(s.session_id) ## tell the server their session ID 
         
-        
+class InternalClientAuthentication(wcps_core.packets.OutPacket):
+    def __init__(self, error_code, u=None):
+        super().__init__(
+            packet_id=PacketList.INTERNALPLAYERAUTHENTICATION,
+            xor_key=wcps_core.constants.InternalKeys.XOR_AUTH_SEND
+        )
+        if error_code!= wcps_core.constants.ErrorCodes.SUCCESS or not u:
+            self.append(error_code)
+        else:
+            self.append(wcps_core.constants.ErrorCodes.SUCCESS)
+            self.append(u.session_id)
+            self.append(u.username)
+            self.append(u.rights)
+
 
 class PacketHandler(abc.ABC):
     def __init__(self):
@@ -334,21 +347,32 @@ class ServerListHandler(PacketHandler):
         ## check if a session already exists for this player
         session_manager = SessionManager()
         is_authorized = await session_manager.is_user_authorized(this_user["username"])
+        session_id = await session_manager.get_user_session_id(this_user["username"])
+        ## Will be false if session does not exists
+        is_activated_session = await session_manager.is_user_session_activated(session_id)
 
-        ## The user is already logged in
-        if is_authorized:
-            await user.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
-            await user.disconnect()
-        else:
-            ## Authenticate it and let him log!
+        ## First log OR relog after game server reject
+        if not is_authorized or (is_authorized and session_id is not None and not is_activated_session):
+            if is_authorized: ## destroy the previous session first
+                await session_manager.unauthorize_user(this_user["username"])
+                print("RELOG")
+            
+            ## first time authorize or reauthorize
             await user.authorize(
-                username=input_id,
+                username=this_user["username"],
                 displayname=this_user["displayname"],
                 rights=this_user["rights"]
             )
             await user.send(ServerList(wcps_core.constants.ErrorCodes.SUCCESS, u=user).build())
             ## Can be safely disconnect after this packet
             await user.disconnect()
+        else:
+            if is_activated_session:
+                await u.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
+            else:
+                await u.send(ServerList(ServerList.ErrorCodes.ILLEGAL_EXCEPTION).build())
+                
+            await u.disconnect()
 
 
 class GameServerAuthHandler(PacketHandler):
@@ -458,11 +482,31 @@ class GameServerStatusHandler(PacketHandler):
 class InternalClientAuthRequestHandler(PacketHandler):
     async def process(self, server) -> None:
         if server.authorized:
-            self._error_code = self.get_block(0)
-            self._reported_session_id = self.get_block(1)
-            self._reported_username = self.get_block(2)
-            self._reported_rights = self.get_block(3)
-            pass
+            error_code = self.get_block(0)
+            reported_session_id = self.get_block(1)
+            reported_username = self.get_block(2)
+            reported_rights = self.get_block(3)
+
+            session_manager = SessionManager()
+            has_login_session = await session_manager.is_user_authorized(reported_username)
+
+            if not has_login_session:
+                await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.INVALID_KEY_SESSION).build())
+                return
+
+            stored_session_id = await session_manager.get_user_session_id(reported_username)
+            is_activated_session = await session_manager.is_user_session_activated(stored_session_id)
+
+            if reported_session_id == stored_session_id:
+                if is_activated_session:
+                    await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED).build())
+                else:
+                    session_manager.activate_user_session(stored_session_id)
+                    this_user = await session_manager.get_user_by_session_id(reported_session_id)
+                    await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.SUCCESS, this_user).build())
+            else:
+                await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
+
         else:
             logging.info(f"Unauthorized client authorization request from {server.address}")
             server.disconnect()
