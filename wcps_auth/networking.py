@@ -262,19 +262,15 @@ class InternalGameAuthentication(wcps_core.packets.OutPacket):
             self.append(s.session_id) ## tell the server their session ID 
         
 class InternalClientAuthentication(wcps_core.packets.OutPacket):
-    def __init__(self, error_code, u=None):
+    def __init__(self, error_code, reported_user:str, reported_session:int, reported_rights:int):
         super().__init__(
             packet_id=PacketList.INTERNALPLAYERAUTHENTICATION,
             xor_key=wcps_core.constants.InternalKeys.XOR_AUTH_SEND
         )
-        if error_code!= wcps_core.constants.ErrorCodes.SUCCESS or not u:
-            self.append(error_code)
-        else:
-            self.append(wcps_core.constants.ErrorCodes.SUCCESS)
-            self.append(u.session_id)
-            self.append(u.username)
-            self.append(u.rights)
-
+        self.append(error_code)
+        self.append(reported_user)
+        self.append(reported_session)
+        self.append(reported_rights)
 
 class PacketHandler(abc.ABC):
     def __init__(self):
@@ -480,24 +476,35 @@ class InternalClientAuthRequestHandler(PacketHandler):
 
             session_manager = SessionManager()
             has_login_session = await session_manager.is_user_authorized(reported_username)
+            
+            error_to_report = wcps_core.constants.ErrorCodes.INVALID_KEY_SESSION
 
             if not has_login_session:
-                await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.INVALID_KEY_SESSION).build())
-                return
+                error_to_report = wcps_core.constants.ErrorCodes.INVALID_KEY_SESSION
 
             stored_session_id = await session_manager.get_user_session_id(reported_username)
             is_activated_session = await session_manager.is_user_session_activated(stored_session_id)
 
             if reported_session_id == stored_session_id:
                 if is_activated_session:
-                    await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED).build())
+                    error_code = wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED
                 else:
+                    error_code = wcps_core.constants.ErrorCodes.SUCCESS
+                    ## Activate the sesssion
                     await session_manager.activate_user_session(stored_session_id)
-                    this_user = await session_manager.get_user_by_session_id(stored_session_id)
-                    await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.SUCCESS, this_user).build())
             else:
-                await server.send(InternalClientAuthentication(wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH).build())
-
+                error_to_report = wcps_core.constants.ErrorCodes.INVALID_SESSION_MATCH
+            
+            ##TODO sanitize rights against 
+            # this_user = await session_manager.get_user_by_session_id(stored_session_id)
+            
+            await server.send(InternalClientAuthentication(
+                error_to_report,
+                reported_session=reported_session_id,
+                reported_user=reported_username,
+                reported_rights=reported_rights
+                ).build()
+                )
         else:
             logging.info(f"Unauthorized client authorization request from {server.address}")
             server.disconnect()
