@@ -359,11 +359,11 @@ class ServerListHandler(PacketHandler):
             await user.disconnect()
         else:
             if is_activated_session:
-                await u.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
+                await user.send(ServerList(ServerList.ErrorCodes.ALREADY_LOGGED_IN).build())
             else:
-                await u.send(ServerList(ServerList.ErrorCodes.ILLEGAL_EXCEPTION).build())
+                await user.send(ServerList(ServerList.ErrorCodes.ILLEGAL_EXCEPTION).build())
 
-            await u.disconnect()
+            await user.disconnect()
 
 
 class GameServerAuthHandler(PacketHandler):
