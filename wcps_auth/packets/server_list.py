@@ -1,23 +1,11 @@
-import wcps_core.packets
+from wcps_core.constants import ErrorCodes as corerr
+from wcps_core.packets import OutPacket
 
-class ClientXorKeys:
-    SEND = 0x96
-    RECEIVE = 0xC3
+from .packet_list import PacketList, ClientXorKeys
 
-class PacketList:
-    INTERNALGAMEAUTHENTICATION = wcps_core.packets.PacketList.GameServerAuthentication
-    INTERNALGAMESTATUS = wcps_core.packets.PacketList.GameServerStatus
-    INTERNALPLAYERAUTHENTICATION = wcps_core.packets.PacketList.ClientAuthentication
-    LAUNCHER = 0x1010
-    SERVER_LIST = 0x1100
-    NICKNAME = 0x1101
+from sessions import SessionManager
 
-class Launcher(wcps_core.packets.OutPacket):
-    def __init__(self):
-        super().__init__(packet_id=PacketList.LAUNCHER, xor_key=ClientXorKeys.SEND)
-        self.fill(0, 7)
-
-class ServerList(wcps_core.packets.OutPacket):
+class ServerList(OutPacket):
     class ErrorCodes:
         ILLEGAL_EXCEPTION = 70101
         NEW_NICKNAME = 72000
@@ -37,10 +25,10 @@ class ServerList(wcps_core.packets.OutPacket):
 
     def __init__(self, error_code: ErrorCodes, u=None):
         super().__init__(packet_id=PacketList.SERVER_LIST, xor_key=ClientXorKeys.SEND)
-        if error_code != wcps_core.constants.ErrorCodes.SUCCESS or not u:
+        if error_code != corerr.SUCCESS or not u:
             self.append(error_code)
         else:
-            self.append(1)
+            self.append(corerr.SUCCESS)
             self.append(1)  # ID
             self.append(0)  # unknown
             self.append(u.username)  # userid
@@ -73,26 +61,3 @@ class ServerList(wcps_core.packets.OutPacket):
             self.fill(-1, 4)  # ID?/NAME?/MASTER?/Unknown
             self.append(0)    # unknown
             self.append(0)  # unknown
-
-class InternalGameAuthentication(wcps_core.packets.OutPacket):
-    def __init__(self, error_code, s=None):
-        super().__init__(
-            packet_id=PacketList.INTERNALGAMEAUTHENTICATION, 
-            xor_key=wcps_core.constants.InternalKeys.XOR_AUTH_SEND)
-
-        if error_code != wcps_core.constants.ErrorCodes.SUCCESS or not s:
-            self.append(error_code)
-        else:
-            self.append(wcps_core.constants.ErrorCodes.SUCCESS)
-            self.append(s.session_id) ## tell the server their session ID 
-        
-class InternalClientAuthentication(wcps_core.packets.OutPacket):
-    def __init__(self, error_code, reported_user:str, reported_session:int, reported_rights:int):
-        super().__init__(
-            packet_id=PacketList.INTERNALPLAYERAUTHENTICATION,
-            xor_key=wcps_core.constants.InternalKeys.XOR_AUTH_SEND
-        )
-        self.append(error_code)
-        self.append(reported_user)
-        self.append(reported_session)
-        self.append(reported_rights)
