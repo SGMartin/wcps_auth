@@ -474,14 +474,13 @@ class GameServerStatusHandler(PacketHandler):
 class InternalClientAuthRequestHandler(PacketHandler):
     async def process(self, server) -> None:
         if server.authorized:
-            error_code = self.get_block(0)
+            error_code = int(self.get_block(0))
             reported_session_id = int(self.get_block(1))
             reported_username = self.get_block(2)
             reported_rights = int(self.get_block(3))
 
             session_manager = SessionManager()
             has_login_session = await session_manager.is_user_authorized(reported_username)
-            
             error_to_report = wcps_core.constants.ErrorCodes.INVALID_KEY_SESSION
 
             if not has_login_session:
@@ -492,6 +491,11 @@ class InternalClientAuthRequestHandler(PacketHandler):
 
             if reported_session_id == stored_session_id:
                 if is_activated_session:
+                    ## check if the server wants us to unauthorize the user
+                    if error_code == wcps_core.constants.ErrorCodes.END_CONNECTION:
+                        await session_manager.unauthorize_user(reported_username)
+                        return
+                        
                     error_to_report = wcps_core.constants.ErrorCodes.ALREADY_AUTHORIZED
                 else:
                     error_to_report = wcps_core.constants.ErrorCodes.SUCCESS
