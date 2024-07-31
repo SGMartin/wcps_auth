@@ -2,6 +2,11 @@ import unittest
 import asyncio
 from wcps_auth.sessions import SessionManager
 
+# Adjust the import path
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../wcps_auth')))
+
 class MockUser:
     def __init__(self, username):
         self.username = username
