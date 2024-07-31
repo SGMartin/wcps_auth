@@ -4,26 +4,10 @@ from wcps_core.packets import OutPacket
 from .packet_list import PacketList, ClientXorKeys
 
 from sessions import SessionManager
+from error_codes import ServerListError
 
 class ServerList(OutPacket):
-    class ErrorCodes:
-        ILLEGAL_EXCEPTION = 70101
-        NEW_NICKNAME = 72000
-        WRONG_USER = 72010
-        WRONG_PW = 72020
-        ALREADY_LOGGED_IN = 72030
-        CLIENT_VER_NOT_MATCH = 70301
-        BANNED = 73050
-        BANNED_TIME = 73020
-        NOT_ACTIVE = 73040
-        ENTER_ID_ERROR = 74010
-        ENTER_PASSWORD_ERROR = 74020
-        ERROR_NICKNAME = 74030
-        NICKNAME_TAKEN = 74070
-        NICKNAME_TOO_LONG = 74100
-        ILLEGAL_NICKNAME = 74110
-
-    def __init__(self, error_code: ErrorCodes, u=None):
+    def __init__(self, error_code: ServerListError, u=None):
         super().__init__(packet_id=PacketList.SERVER_LIST, xor_key=ClientXorKeys.SEND)
         if error_code != corerr.SUCCESS or not u:
             self.append(error_code)

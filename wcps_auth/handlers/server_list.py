@@ -6,7 +6,8 @@ from packets.packet_factory import PacketFactory
 from packets.packet_list import PacketList
 from sessions import SessionManager
 
-from wcps_core.constants import ErrorCodes
+from wcps_core.constants import ErrorCodes as corerr
+from error_codes import ServerListError
 
 class ServerListHandler(PacketHandler):
     async def process(self, user) -> None:
@@ -15,14 +16,14 @@ class ServerListHandler(PacketHandler):
 
         # Validate input ID
         if len(input_id) < 3 or not input_id.isalnum():
-            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerList.ErrorCodes.ENTER_ID_ERROR)
+            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.ENTER_ID_ERROR)
             await user.send(packet.build())
             await user.disconnect()
             return
 
         # Validate input password
         if len(input_pw) < 3:
-            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerList.ErrorCodes.ENTER_PASSWORD_ERROR)
+            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.ENTER_PASSWORD_ERROR)
             await user.send(packet.build())
             await user.disconnect()
             return
@@ -30,7 +31,7 @@ class ServerListHandler(PacketHandler):
         # Retrieve user details
         this_user = await get_user_details(input_id)
         if not this_user:
-            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerList.ErrorCodes.WRONG_USER)
+            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.WRONG_USER)
             await user.send(packet.build())
             await user.disconnect()
             return
@@ -39,14 +40,14 @@ class ServerListHandler(PacketHandler):
         password_to_hash = f"{input_pw}{this_user['salt']}".encode("utf-8")
         hashed_password = hashlib.sha256(password_to_hash).hexdigest()
         if this_user["password"] != hashed_password:
-            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerList.ErrorCodes.WRONG_PW)
+            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.WRONG_PW)
             await user.send(packet.build())
             await user.disconnect()
             return
 
         # Check user rights
         if this_user["rights"] == 0:
-            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerList.ErrorCodes.BANNED)
+            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.BANNED)
             await user.send(packet.build())
             await user.disconnect()
             return
@@ -66,14 +67,14 @@ class ServerListHandler(PacketHandler):
                 displayname=this_user["displayname"],
                 rights=this_user["rights"]
             )
-            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ErrorCodes.SUCCESS, u=user)
+            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, corerr.SUCCESS, u=user)
             await user.send(packet.build())
             await user.disconnect()
         else:
             if is_activated_session:
-                packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerList.ErrorCodes.ALREADY_LOGGED_IN)
+                packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.ALREADY_LOGGED_IN)
             else:
-                packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerList.ErrorCodes.ILLEGAL_EXCEPTION)
+                packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.ILLEGAL_EXCEPTION)
             
             await user.send(packet.build())
             await user.disconnect()
