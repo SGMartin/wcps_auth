@@ -10,7 +10,7 @@ class SessionManager:
             cls._instance = super(SessionManager, cls).__new__(cls)
             cls._instance._user_sessions = {}
             cls._instance._server_sessions = {}
-            cls._instance._user_session_id_counter = -32768  # Initialize counter within the allowed range
+            cls._instance._user_session_id_counter = 0  # Initialize counter within the allowed range
         return cls._instance
 
     async def authorize_user(self, user):
@@ -18,11 +18,10 @@ class SessionManager:
             if user.username in self._user_sessions:
                 return self._user_sessions[user.username]['session_id']
 
-            if len(self._user_sessions) >= 65536:  # Check if all possible session IDs are used
+            if len(self._user_sessions) >= 32768:  # Check if all possible session IDs are used
                 raise Exception("No available session IDs for users")
 
-            # Generate a new session ID within the range [-32767, 32767]
-            # CP1 clients only goes that far
+            # Generate a new session ID within the range [0, 32767]
             session_id = self._generate_user_session_id()
             self._user_sessions[user.username] = {
                 'user': user,
@@ -33,14 +32,14 @@ class SessionManager:
 
     def _generate_user_session_id(self):
         used_ids = {session['session_id'] for session in self._user_sessions.values()}
-        for _ in range(65536):  # 65536 is the total number of unique session IDs available
+        for _ in range(32768):  # 32768 is the total number of unique session IDs available
             self._user_session_id_counter += 1
             if self._user_session_id_counter > 32767:
-                self._user_session_id_counter = -32767
+                self._user_session_id_counter = 0
 
             if self._user_session_id_counter not in used_ids:
                 return self._user_session_id_counter
-    
+
         raise Exception("No available session IDs for users")
 
     async def authorize_server(self, server):
@@ -78,21 +77,21 @@ class SessionManager:
 
     def get_all_authorized_servers(self):
         return list(self._server_sessions.values())
-    
+
     async def get_user_session_id(self, username):
         async with self._lock:
             if username in self._user_sessions:
                 return self._user_sessions[username]['session_id']
             else:
                 return None
-    
+
     async def get_user_by_session_id(self, session_id):
         async with self._lock:
             for session in self._user_sessions.values():
                 if session['session_id'] == session_id:
                     return session['user']
             return None
-    
+
     async def activate_user_session(self, session_id):
         async with self._lock:
             for session in self._user_sessions.values():
