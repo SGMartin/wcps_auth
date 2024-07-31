@@ -1,9 +1,9 @@
-from .packet_list import PacketList
+from wcps_auth.packets.packet_list import PacketList
 
-from .launcher import Launcher
-from .server_list import ServerList
-from .internal_game_auth import InternalGameAuthentication
-from .internal_user_auth import InternalClientAuthentication
+from wcps_auth.packets.launcher import Launcher
+from wcps_auth.packets.server_list import ServerList
+from wcps_auth.packets.internal_game_auth import InternalGameAuthentication
+from wcps_auth.packets.internal_user_auth import InternalClientAuthentication
 
 class PacketFactory:
     packet_classes = {

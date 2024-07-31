@@ -2,12 +2,12 @@ import logging
 
 from wcps_core.constants import ErrorCodes, ServerTypes
 
-from packets.packet_factory import PacketFactory
-from packets.packet_list import PacketList
+from wcps_auth.packets.packet_factory import PacketFactory
+from wcps_auth.packets.packet_list import PacketList
 
-from .base import PacketHandler
-from database import get_server_list
-from sessions import SessionManager
+from wcps_auth.handlers.base import PacketHandler
+from wcps_auth.database import get_server_list
+from wcps_auth.sessions import SessionManager
 
 class GameServerAuthHandler(PacketHandler):
     async def process(self, server) -> None:

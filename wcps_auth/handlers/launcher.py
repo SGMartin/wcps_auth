@@ -1,6 +1,6 @@
 from .base import PacketHandler
-from packets.packet_factory import PacketFactory
-from packets.packet_list import PacketList
+from wcps_auth.packets.packet_factory import PacketFactory
+from wcps_auth.packets.packet_list import PacketList
 
 class LauncherHandler(PacketHandler):
     async def process(self, receptor) -> None:

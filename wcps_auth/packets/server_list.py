@@ -1,10 +1,10 @@
 from wcps_core.constants import ErrorCodes as corerr
 from wcps_core.packets import OutPacket
 
-from .packet_list import PacketList, ClientXorKeys
+from wcps_auth.packets.packet_list import PacketList, ClientXorKeys
 
-from sessions import SessionManager
-from error_codes import ServerListError
+from wcps_auth.sessions import SessionManager
+from wcps_auth.error_codes import ServerListError
 
 class ServerList(OutPacket):
     def __init__(self, error_code: ServerListError, u=None):

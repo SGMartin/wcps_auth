@@ -2,7 +2,7 @@
 
 import logging
 
-from packets.packet_list import PacketList
+from wcps_auth.packets.packet_list import PacketList
 
 from .base import PacketHandler
 from .launcher import LauncherHandler

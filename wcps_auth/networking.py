@@ -4,10 +4,10 @@ import logging
 import wcps_core.constants
 import wcps_core.packets
 
-from entities import BaseNetworkEntity
-from sessions import SessionManager
+from wcps_auth.entities import BaseNetworkEntity
+from wcps_auth.sessions import SessionManager
 
-from handlers import get_handler_for_packet
+from wcps_auth.handlers import get_handler_for_packet
 
 logging.basicConfig(level=logging.INFO)
 

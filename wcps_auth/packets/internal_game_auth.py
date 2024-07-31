@@ -1,7 +1,7 @@
 from wcps_core.constants import ErrorCodes, InternalKeys
 from wcps_core.packets import OutPacket
 
-from .packet_list import PacketList
+from wcps_auth.packets.packet_list import PacketList
 
 class InternalGameAuthentication(OutPacket):
     def __init__(self, error_code, s=None):

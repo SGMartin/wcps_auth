@@ -1,4 +1,4 @@
-from .base import PacketHandler
+from wcps_auth.handlers.base import PacketHandler
 
 class GameServerStatusHandler(PacketHandler):
     async def process(self, server) -> None:

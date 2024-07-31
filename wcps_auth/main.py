@@ -3,8 +3,8 @@ import datetime
 import logging
 import time
 
-from database import get_server_list, run_pool
-from networking import start_listeners
+from wcps_auth.database import get_server_list, run_pool
+from wcps_auth.networking import start_listeners
 
 # ASCII LOGO
 WCPS_IMAGE = r"""

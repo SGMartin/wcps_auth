@@ -3,7 +3,7 @@ import asyncio
 
 from wcps_core.packets import InPacket
 
-from entities import BaseNetworkEntity
+from wcps_auth.entities import BaseNetworkEntity
 
 class PacketHandler(abc.ABC):
     def __init__(self):

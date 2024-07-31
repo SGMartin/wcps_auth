@@ -1,13 +1,13 @@
 import hashlib
 
-from .base import PacketHandler
-from database import get_user_details
-from packets.packet_factory import PacketFactory
-from packets.packet_list import PacketList
-from sessions import SessionManager
+from wcps_auth.handlers.base import PacketHandler
+from wcps_auth.database import get_user_details
+from wcps_auth.packets.packet_factory import PacketFactory
+from wcps_auth.packets.packet_list import PacketList
+from wcps_auth.sessions import SessionManager
 
 from wcps_core.constants import ErrorCodes as corerr
-from error_codes import ServerListError
+from wcps_auth.error_codes import ServerListError
 
 class ServerListHandler(PacketHandler):
     async def process(self, user) -> None:
