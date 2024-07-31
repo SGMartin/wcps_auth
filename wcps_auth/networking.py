@@ -56,6 +56,7 @@ class GameServer(BaseNetworkEntity):
         self.address = None
         self.port = None
         self.name = ""
+        self.id = -1
         self.server_type = wcps_core.constants.ServerTypes.NONE
         self.current_players = 0
         self.max_players = 0
