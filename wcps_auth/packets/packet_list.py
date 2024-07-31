@@ -10,5 +10,4 @@ class PacketList:
     INTERNALPLAYERAUTHENTICATION = cp.ClientAuthentication
     LAUNCHER = 0x1010
     SERVER_LIST = 0x1100
-    #TODO: implement this
-    NICKNAME = 0x1101
+    SETNICKNAME = 0x1101

@@ -58,6 +58,10 @@ class ServerListHandler(PacketHandler):
         session_id = await session_manager.get_user_session_id(this_user["username"])
         is_activated_session = await session_manager.is_user_session_activated(session_id)
 
+        # When players leave the server selection menu or are rejected by a server
+        # their session will exists already after reaching this code block, 
+        # but it won't be active
+
         if not is_authorized or (is_authorized and session_id is not None and not is_activated_session):
             if is_authorized:
                 await session_manager.unauthorize_user(this_user["username"])
@@ -67,9 +71,17 @@ class ServerListHandler(PacketHandler):
                 displayname=this_user["displayname"],
                 rights=this_user["rights"]
             )
-            packet = PacketFactory.create_packet(PacketList.SERVER_LIST, corerr.SUCCESS, u=user)
-            await user.send(packet.build())
-            await user.disconnect()
+            ## Nickname is not set. Send new nickname packet
+            if not this_user["displayname"]:
+                packet = PacketFactory.create_packet(
+                    packet_id=PacketList.SERVER_LIST, 
+                    error_code=ServerListError.NEW_NICKNAME
+                    )
+                await user.send(packet.build())
+            else:
+                packet = PacketFactory.create_packet(PacketList.SERVER_LIST, corerr.SUCCESS, u=user)
+                await user.send(packet.build())
+                await user.disconnect()
         else:
             if is_activated_session:
                 packet = PacketFactory.create_packet(PacketList.SERVER_LIST, ServerListError.ALREADY_LOGGED_IN)

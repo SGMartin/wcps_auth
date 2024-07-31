@@ -66,3 +66,23 @@ async def get_user_details(user_id: str) -> dict:
                     return None
             else:
                 return None
+
+
+async def displayname_exists(displayname):
+    async with pool.acquire() as connection:
+        await connection.select_db("auth_test")
+        async with connection.cursor() as cur:
+            await cur.execute("SELECT COUNT(*) FROM users WHERE displayname=%s", (displayname,))
+            (count,) = await cur.fetchone()
+            return count > 0
+
+
+async def update_displayname(username, new_displayname):
+    async with pool.acquire() as connection:
+        await connection.select_db("auth_test")
+        async with connection.cursor() as cur:
+            # Update the displayname securely using a parameterized query
+            query = "UPDATE users SET displayname=%s WHERE username=%s"
+            await cur.execute(query, (new_displayname, username))
+            await connection.commit()
+            return True
