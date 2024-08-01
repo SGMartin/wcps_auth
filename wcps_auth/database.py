@@ -26,7 +26,7 @@ async def run_pool():
 def generate_servers_addresses(query_results: list) -> list:
     server_list = []
     for candidate_server in query_results:
-        ## Each result is a tuple of 4 fields
+        # Each result is a tuple of 4 fields
         server_id, addr, port, active = candidate_server
         server_list.append((server_id, addr, port))
 
@@ -75,7 +75,8 @@ async def displayname_exists(displayname):
         await connection.select_db("auth_test")
         async with connection.cursor() as cur:
             await cur.execute(
-                "SELECT COUNT(*) FROM users WHERE displayname=%s", (displayname,)
+                "SELECT COUNT(*) FROM users WHERE displayname=%s",
+                (displayname,)
             )
             (count,) = await cur.fetchone()
             return count > 0

@@ -1,7 +1,5 @@
 import asyncio
-import datetime
 import logging
-import time
 
 from wcps_auth.database import get_server_list, run_pool
 from wcps_auth.networking import start_listeners
@@ -26,9 +24,6 @@ logging.basicConfig(
 async def main():
     print(WCPS_IMAGE)
 
-    # Get the current date
-    now = datetime.datetime.now()
-    start_time = now.strftime("%d/%m/%Y")
     keep_running = True
     logging.info("Initializing database pool...")
     await run_pool()

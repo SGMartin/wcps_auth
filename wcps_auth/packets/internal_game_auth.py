@@ -15,4 +15,4 @@ class InternalGameAuthentication(OutPacket):
             self.append(error_code)
         else:
             self.append(ErrorCodes.SUCCESS)
-            self.append(s.session_id)  ## tell the server their session ID
+            self.append(s.session_id)  # tell the server their session ID

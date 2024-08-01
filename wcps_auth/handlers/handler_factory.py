@@ -1,5 +1,3 @@
-# handlers/handler_factory.py
-
 import logging
 
 from wcps_auth.packets.packet_list import PacketList

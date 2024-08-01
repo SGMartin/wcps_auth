@@ -18,7 +18,7 @@ class GameServerAuthHandler(PacketHandler):
         if error_code != ErrorCodes.SUCCESS:
             return
 
-        ## Check if the auth server is already full before anything else
+        # Check if the auth server is already full before anything else
         session_manager = SessionManager()
 
         servers_registered = len(session_manager.get_all_authorized_servers())
@@ -84,10 +84,10 @@ class GameServerAuthHandler(PacketHandler):
             await server.disconnect()
             return
 
-        ## get list of servers registered in the DB
-        ## server list format is [(id,ip,addr)]
-        ##TODO: Potential DDoS here... generate a list that only updates each X?
-        ##TODO: check against max. number of authorized servers
+        # get list of servers registered in the DB
+        # server list format is [(id,ip,addr)]
+        # TODO: Potential DDoS here... generate a list that only updates each X?
+        # TODO: check against max. number of authorized servers
         all_active_servers = await get_server_list()
         if not (server_id, server_addr, server_port) in all_active_servers:
             logging.error(f"Unregistered server: {server_addr}:{server_port}")
@@ -109,7 +109,7 @@ class GameServerAuthHandler(PacketHandler):
             await server.disconnect()
 
         else:
-            ##TODO: Move this to authorize and improve the data structure
+            # TODO: Move this to authorize and improve the data structure
             server.address = server_addr
             server.port = server_port
             await server.authorize(

@@ -1,3 +1,5 @@
+import logging
+
 from wcps_core.constants import ErrorCodes
 
 from wcps_auth.handlers.base import PacketHandler
@@ -32,7 +34,7 @@ class InternalClientAuthRequestHandler(PacketHandler):
 
             if reported_session_id == stored_session_id:
                 if is_activated_session:
-                    ## check if the server wants us to unauthorize the user
+                    # check if the server wants us to unauthorize the user
                     if error_code == ErrorCodes.END_CONNECTION:
                         await session_manager.unauthorize_user(reported_username)
                         return
@@ -40,12 +42,12 @@ class InternalClientAuthRequestHandler(PacketHandler):
                     error_to_report = ErrorCodes.ALREADY_AUTHORIZED
                 else:
                     error_to_report = ErrorCodes.SUCCESS
-                    ## Activate the sesssion
+                    # Activate the sesssion
                     await session_manager.activate_user_session(stored_session_id)
             else:
                 error_to_report = ErrorCodes.INVALID_SESSION_MATCH
 
-            ##TODO sanitize rights against
+            # TODO sanitize rights against
             # this_user = await session_manager.get_user_by_session_id(stored_session_id)
             packet = PacketFactory.create_packet(
                 PacketList.INTERNALPLAYERAUTHENTICATION,

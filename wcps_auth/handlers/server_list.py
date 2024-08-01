@@ -86,7 +86,7 @@ class ServerListHandler(PacketHandler):
                 displayname=this_user["displayname"],
                 rights=this_user["rights"],
             )
-            ## Nickname is not set. Send new nickname packet
+            # Nickname is not set. Send new nickname packet
             if not this_user["displayname"]:
                 packet = PacketFactory.create_packet(
                     packet_id=PacketList.SERVER_LIST,

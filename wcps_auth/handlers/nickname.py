@@ -21,7 +21,7 @@ class SetNickNameHandler(PacketHandler):
             if len(new_nickname) > 16:
                 invalid_reason = ServerListError.NICKNAME_TOO_LONG
 
-            ## Database call to check if the display name is already in use
+            # Database call to check if the display name is already in use
             if await displayname_exists(displayname=new_nickname):
                 invalid_reason = ServerListError.NICKNAME_TAKEN
             else:
@@ -41,7 +41,7 @@ class SetNickNameHandler(PacketHandler):
                 await user.send(packet.build())
                 await user.disconnect()
 
-                ## update the database nickname
+                # update the database nickname
                 await update_displayname(
                     username=user.username, new_displayname=new_nickname
                 )

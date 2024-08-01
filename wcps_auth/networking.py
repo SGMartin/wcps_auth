@@ -61,7 +61,7 @@ class User(BaseNetworkEntity):
         session_manager = SessionManager()
         if await session_manager.is_user_authorized(self.username):
             this_user = await session_manager.get_user_by_session_id(self.session_id)
-            ## Just in case some random disconnection happened lol
+            # Just in case some random disconnection happened lol
             this_user.displayname = new_nickname
 
     def get_handler_for_packet(self, packet_id):

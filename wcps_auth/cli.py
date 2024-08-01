@@ -11,7 +11,7 @@ def run():
         "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
-    args = parser.parse_args()
+    parser.parse_args()
 
     # Run the asyncio main function
     asyncio.run(main())

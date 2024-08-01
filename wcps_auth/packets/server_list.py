@@ -31,7 +31,7 @@ class ServerList(OutPacket):
                 1
             )  # Old servers say to append 1.11025 for PF20, but seems to be working atm.
 
-            ## get all authorized servers
+            # get all authorized servers
             session_manager = SessionManager()
             all_servers_sessions = session_manager.get_all_authorized_servers()
 
@@ -44,8 +44,8 @@ class ServerList(OutPacket):
                 self.append(s.name)
                 self.append(s.address)
                 self.append(s.port)
-                ## Current pop. Assumed to be x/3600. In the future, maybe
-                ## do fractions for servers with smaller capacity
+                # Current pop. Assumed to be x/3600. In the future, maybe
+                # do fractions for servers with smaller capacity
                 self.append(s.current_players)
                 self.append(s.server_type)
 
