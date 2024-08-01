@@ -74,7 +74,9 @@ async def displayname_exists(displayname):
     async with pool.acquire() as connection:
         await connection.select_db("auth_test")
         async with connection.cursor() as cur:
-            await cur.execute("SELECT COUNT(*) FROM users WHERE displayname=%s", (displayname,))
+            await cur.execute(
+                "SELECT COUNT(*) FROM users WHERE displayname=%s", (displayname,)
+            )
             (count,) = await cur.fetchone()
             return count > 0
 

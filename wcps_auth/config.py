@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
-    
-    ## Database 
+
+    ## Database
     database_name: str = "auth_test"
     database_user: str = "root"
     database_password: str = "root"

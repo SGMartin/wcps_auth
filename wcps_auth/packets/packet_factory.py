@@ -5,6 +5,7 @@ from wcps_auth.packets.server_list import ServerList
 from wcps_auth.packets.internal_game_auth import InternalGameAuthentication
 from wcps_auth.packets.internal_user_auth import InternalClientAuthentication
 
+
 class PacketFactory:
     packet_classes = {
         PacketList.LAUNCHER: Launcher,

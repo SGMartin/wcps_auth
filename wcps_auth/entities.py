@@ -3,8 +3,15 @@ import logging
 
 from wcps_core.packets import InPacket, Connection
 
+
 class BaseNetworkEntity:
-    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, xor_key_send, xor_key_receive):
+    def __init__(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        xor_key_send,
+        xor_key_receive,
+    ):
         self.reader = reader
         self.writer = writer
         self.xor_key_send = xor_key_send
@@ -24,14 +31,18 @@ class BaseNetworkEntity:
                 break
 
             try:
-                incoming_packet = InPacket(buffer=data, receptor=self, xor_key=self.xor_key_receive)
+                incoming_packet = InPacket(
+                    buffer=data, receptor=self, xor_key=self.xor_key_receive
+                )
                 if incoming_packet.decoded_buffer:
                     logging.info(f"IN:: {incoming_packet.decoded_buffer}")
                     handler = self.get_handler_for_packet(incoming_packet.packet_id)
                     if handler:
                         asyncio.create_task(handler.handle(incoming_packet))
                     else:
-                        logging.error(f"Unknown handler for packet {incoming_packet.packet_id}")
+                        logging.error(
+                            f"Unknown handler for packet {incoming_packet.packet_id}"
+                        )
                 else:
                     logging.error(f"Cannot decrypt packet {incoming_packet}")
                     await self.disconnect()

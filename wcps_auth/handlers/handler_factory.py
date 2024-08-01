@@ -14,13 +14,14 @@ from .internal_client_auth import InternalClientAuthRequestHandler
 
 # Dictionary to map packet IDs to handler classes
 HANDLER_MAP = {
-    PacketList.LAUNCHER: LauncherHandler, 
+    PacketList.LAUNCHER: LauncherHandler,
     PacketList.SERVER_LIST: ServerListHandler,
     PacketList.SETNICKNAME: SetNickNameHandler,
     PacketList.INTERNALGAMEAUTHENTICATION: GameServerAuthHandler,
     PacketList.INTERNALGAMESTATUS: GameServerStatusHandler,
-    PacketList.INTERNALPLAYERAUTHENTICATION: InternalClientAuthRequestHandler
+    PacketList.INTERNALPLAYERAUTHENTICATION: InternalClientAuthRequestHandler,
 }
+
 
 def get_handler_for_packet(packet_id: int) -> PacketHandler:
     handler_class = HANDLER_MAP.get(packet_id)

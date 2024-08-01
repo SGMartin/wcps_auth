@@ -5,11 +5,16 @@ from wcps_auth.sessions import SessionManager
 # Adjust the import path
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../wcps_auth')))
+
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../wcps_auth"))
+)
+
 
 class MockUser:
     def __init__(self, username):
         self.username = username
+
 
 class MockServer:
     def __init__(self, server_id):
@@ -31,31 +36,53 @@ class TestSessionManager(unittest.TestCase):
         self.assertIs(self.session_manager, another_instance)
 
     def test_authorize_user(self):
-        user = MockUser('user123')
-        session_id = self.loop.run_until_complete(self.session_manager.authorize_user(user))
+        user = MockUser("user123")
+        session_id = self.loop.run_until_complete(
+            self.session_manager.authorize_user(user)
+        )
         self.assertIsNotNone(session_id)
-        self.assertTrue(self.loop.run_until_complete(self.session_manager.is_user_authorized(user.username)))
+        self.assertTrue(
+            self.loop.run_until_complete(
+                self.session_manager.is_user_authorized(user.username)
+            )
+        )
 
     def test_authorize_server(self):
         server = MockServer(123)
-        session_id = self.loop.run_until_complete(self.session_manager.authorize_server(server))
+        session_id = self.loop.run_until_complete(
+            self.session_manager.authorize_server(server)
+        )
         self.assertIsNotNone(session_id)
-        self.assertTrue(self.loop.run_until_complete(self.session_manager.is_server_authorized(server.id)))
+        self.assertTrue(
+            self.loop.run_until_complete(
+                self.session_manager.is_server_authorized(server.id)
+            )
+        )
 
     def test_unauthorize_user(self):
-        user = MockUser('user123')
+        user = MockUser("user123")
         self.loop.run_until_complete(self.session_manager.authorize_user(user))
-        self.loop.run_until_complete(self.session_manager.unauthorize_user(user.username))
-        self.assertFalse(self.loop.run_until_complete(self.session_manager.is_user_authorized(user.username)))
+        self.loop.run_until_complete(
+            self.session_manager.unauthorize_user(user.username)
+        )
+        self.assertFalse(
+            self.loop.run_until_complete(
+                self.session_manager.is_user_authorized(user.username)
+            )
+        )
 
     def test_unauthorize_server(self):
         server = MockServer(123)
         self.loop.run_until_complete(self.session_manager.authorize_server(server))
         self.loop.run_until_complete(self.session_manager.unauthorize_server(server.id))
-        self.assertFalse(self.loop.run_until_complete(self.session_manager.is_server_authorized(server.id)))
+        self.assertFalse(
+            self.loop.run_until_complete(
+                self.session_manager.is_server_authorized(server.id)
+            )
+        )
 
     def test_get_all_authorized_users(self):
-        users = [MockUser('user123'), MockUser('user456')]
+        users = [MockUser("user123"), MockUser("user456")]
         for user in users:
             self.loop.run_until_complete(self.session_manager.authorize_user(user))
         authorized_users = self.session_manager.get_all_authorized_users()
@@ -68,5 +95,6 @@ class TestSessionManager(unittest.TestCase):
         authorized_servers = self.session_manager.get_all_authorized_servers()
         self.assertEqual(len(authorized_servers), len(servers))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
