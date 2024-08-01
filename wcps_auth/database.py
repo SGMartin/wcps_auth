@@ -1,17 +1,19 @@
 import asyncio
 import aiomysql
 
+from wcps_auth.config import settings
+
 pool = None
 
 
 async def create_pool():
     global pool
     pool = await aiomysql.create_pool(
-        host="localhost",
+        host=settings().server_ip,
         port=3306,
-        user="root",
-        password="root",
-        db="auth_test",
+        user=settings().database_user,
+        password=settings().database_password,
+        db=settings().database_name,
         loop=asyncio.get_event_loop(),
     )
     return pool

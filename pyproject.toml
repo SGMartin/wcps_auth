@@ -19,6 +19,8 @@ classifiers = [
 ]
 dependencies = [
     "aiomysql",
+    "pydantic",
+    "pydantic-settings",
     "wcps_core",
 ]
 

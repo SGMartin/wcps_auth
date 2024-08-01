@@ -4,6 +4,7 @@ import logging
 import wcps_core.constants
 import wcps_core.packets
 
+from wcps_auth.config import settings
 from wcps_auth.entities import BaseNetworkEntity
 from wcps_auth.sessions import SessionManager
 
@@ -17,14 +18,14 @@ class ClientXorKeys:
 
 async def start_listeners():
     try:
-        client_server = await asyncio.start_server(User, "127.0.0.1", wcps_core.constants.Ports.AUTH_CLIENT)
+        client_server = await asyncio.start_server(User, settings().server_ip, wcps_core.constants.Ports.AUTH_CLIENT)
         logging.info("Client listener started.")
     except OSError:
         logging.error(f"Failed to bind to port {wcps_core.constants.Ports.AUTH_CLIENT}")
         return
 
     try:
-        server_listener = await asyncio.start_server(GameServer, "127.0.0.1", wcps_core.constants.Ports.INTERNAL)
+        server_listener = await asyncio.start_server(GameServer, settings().server_ip, wcps_core.constants.Ports.INTERNAL)
         logging.info("Server listener started.")
     except OSError:
         logging.error(f"Failed to bind to port {wcps_core.constants.Ports.INTERNAL}")
