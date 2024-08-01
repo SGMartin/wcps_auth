@@ -10,7 +10,7 @@ async def create_pool():
     global pool
     pool = await aiomysql.create_pool(
         host=settings().server_ip,
-        port=3306,
+        port=settings().database_port,
         user=settings().database_user,
         password=settings().database_password,
         db=settings().database_name,
