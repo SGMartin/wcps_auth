@@ -34,9 +34,9 @@ async def main():
 
     # Start the asyncio listeners
     asyncio.create_task(start_listeners())
-
+    logging.info("Authentication server started!")
     while keep_running:
-        logging.info("Server is running. Awaiting connections...")
+        logging.info("Awaiting connections...")
         # tasks = []
         # for server in all_game_servers:
         #     task = asyncio.create_task(connect_to_game_server(server))
