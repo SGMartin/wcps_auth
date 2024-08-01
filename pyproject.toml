@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=62", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wcps_auth"
+version = "0.0.1"
+description = "Python based Authentication server for WarRock Chapter 1"
+readme = "README.md"
+authors = [
+    {name = "SGMartin"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "aiomysql",
+    "wcps_core",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/SGMartin/wcps_auth"
+Issues = "https://github.com/SGMartin/wcps_auth/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["wcps_auth"]
+
+[project.scripts]
+wcps-auth = "wcps_auth.cli:run"
