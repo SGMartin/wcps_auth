@@ -9,7 +9,7 @@ pool = None
 async def create_pool():
     global pool
     pool = await aiomysql.create_pool(
-        host=settings().server_ip,
+        host=settings().database_ip,
         port=settings().database_port,
         user=settings().database_user,
         password=settings().database_password,
@@ -44,7 +44,7 @@ async def get_server_list() -> list:
 
 async def get_user_details(user_id: str) -> dict:
     async with pool.acquire() as connection:
-        await connection.select_db("auth_test")
+        await connection.select_db(settings().database_name)
         async with connection.cursor() as cur:
             query = "SELECT * FROM users WHERE username = %s"
             await cur.execute(query, (user_id,))
@@ -72,7 +72,7 @@ async def get_user_details(user_id: str) -> dict:
 
 async def displayname_exists(displayname):
     async with pool.acquire() as connection:
-        await connection.select_db("auth_test")
+        await connection.select_db(settings().database_name)
         async with connection.cursor() as cur:
             await cur.execute(
                 "SELECT COUNT(*) FROM users WHERE displayname=%s",
@@ -84,7 +84,7 @@ async def displayname_exists(displayname):
 
 async def update_displayname(username, new_displayname):
     async with pool.acquire() as connection:
-        await connection.select_db("auth_test")
+        await connection.select_db(settings().database_name)
         async with connection.cursor() as cur:
             # Update the displayname securely using a parameterized query
             query = "UPDATE users SET displayname=%s WHERE username=%s"
