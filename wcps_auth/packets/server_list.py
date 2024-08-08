@@ -14,7 +14,7 @@ class ServerList(OutPacket):
             self.append(error_code)
         else:
             self.append(corerr.SUCCESS)
-            self.append(1)  # ID
+            self.append(1)  # STATIC INTERNAL ID: TODO: DOES THE CLIENT NEEDS IT OR SESSION IS OK?
             self.append(0)  # unknown
             self.append(u.username)  # userid
             self.append(
