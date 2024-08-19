@@ -9,13 +9,9 @@ from wcps_auth.entities import BaseNetworkEntity
 from wcps_auth.sessions import SessionManager
 
 from wcps_auth.handlers import get_handler_for_packet
+from wcps_auth.packets.packet_list import ClientXorKeys
 
 logging.basicConfig(level=logging.INFO)
-
-
-class ClientXorKeys:
-    SEND = 0x96
-    RECEIVE = 0xC3
 
 
 async def start_listeners():
