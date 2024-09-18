@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from wcps_core.packets import InPacket, Connection
+from wcps_core.packets import PacketBuffer, Connection
 
 
 class BaseNetworkEntity:
@@ -31,20 +31,22 @@ class BaseNetworkEntity:
                 break
 
             try:
-                incoming_packet = InPacket(
+                incoming_packets = PacketBuffer(
                     buffer=data, receptor=self, xor_key=self.xor_key_receive
                 )
-                if incoming_packet.decoded_buffer:
-                    logging.info(f"IN:: {incoming_packet.decoded_buffer}")
-                    handler = self.get_handler_for_packet(incoming_packet.packet_id)
-                    if handler:
-                        asyncio.create_task(handler.handle(incoming_packet))
-                    else:
-                        logging.error(
-                            f"Unknown handler for packet {incoming_packet.packet_id}"
-                        )
+                if incoming_packets.decoded_buffer:
+                    logging.info(f"BUFFER IN:: {incoming_packets.decoded_buffer}")
+
+                    for packet in incoming_packets.packet_stack:
+                        handler = self.get_handler_for_packet(packet.packet_id)
+                        if handler:
+                            asyncio.create_task(handler.handle(packet))
+                        else:
+                            logging.error(
+                                f"Unknown handler for packet {packet.packet_id}"
+                            )
                 else:
-                    logging.error(f"Cannot decrypt packet {incoming_packet}")
+                    logging.error(f"Cannot decrypt packet buffer {incoming_packets}")
                     await self.disconnect()
             except Exception as e:
                 logging.exception(f"Error processing packet: {e}")
