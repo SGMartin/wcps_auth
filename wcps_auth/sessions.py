@@ -32,6 +32,7 @@ class SessionManager:
                 "user": user,
                 "session_id": session_id,
                 "is_activated": False,
+                "game_server": None
             }
             return session_id
 
@@ -76,8 +77,21 @@ class SessionManager:
 
     async def unauthorize_server(self, server_id):
         async with self._lock:
+            server_session = self._server_sessions.get(server_id)
+            session_id = server_session["session_id"]
+            # Remove the server session from _server_sessions
             if server_id in self._server_sessions:
                 del self._server_sessions[server_id]
+
+            # Remove all user sessions associated with this server_id
+            users_to_remove = [
+                username
+                for username, session in self._user_sessions.items()
+                if session.get("game_server") == session_id
+                ]
+
+        for username in users_to_remove:
+            del self._user_sessions[username]
 
     def get_all_authorized_users(self):
         return list(self._user_sessions.values())
@@ -99,11 +113,12 @@ class SessionManager:
                     return session["user"]
             return None
 
-    async def activate_user_session(self, session_id):
+    async def activate_user_session(self, session_id, game_server_id):
         async with self._lock:
             for session in self._user_sessions.values():
                 if session["session_id"] == session_id:
                     session["is_activated"] = True
+                    session["game_server"] = game_server_id
                     return True
             return False
 

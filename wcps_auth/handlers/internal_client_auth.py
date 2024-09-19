@@ -43,7 +43,10 @@ class InternalClientAuthRequestHandler(PacketHandler):
                 else:
                     error_to_report = ErrorCodes.SUCCESS
                     # Activate the sesssion
-                    await session_manager.activate_user_session(stored_session_id)
+                    await session_manager.activate_user_session(
+                        session_id=stored_session_id,
+                        game_server_id=server.session_id
+                        )
             else:
                 error_to_report = ErrorCodes.INVALID_SESSION_MATCH
 
