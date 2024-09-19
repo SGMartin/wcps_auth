@@ -24,7 +24,7 @@ class GameServerAuthHandler(PacketHandler):
         servers_registered = len(session_manager.get_all_authorized_servers())
 
         if servers_registered >= 31:
-            logging.error(f"Maximum limit of servers reached. Rejecting...")
+            logging.error("Maximum limit of servers reached. Rejecting...")
             packet = PacketFactory.create_packet(
                 PacketList.INTERNALGAMEAUTHENTICATION, ErrorCodes.SERVER_LIMIT_REACHED
             )
@@ -34,7 +34,7 @@ class GameServerAuthHandler(PacketHandler):
         server_id = self.get_block(1)
         server_name = self.get_block(2)
         server_addr = self.get_block(3)
-        server_port = self.get_block(4)
+        server_port = int(self.get_block(4))
         server_type = self.get_block(5)
         current_players = self.get_block(6)
         max_players = self.get_block(7)
