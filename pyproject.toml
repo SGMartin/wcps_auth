@@ -30,7 +30,7 @@ Issues = "https://github.com/SGMartin/wcps_auth/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["wcps_auth"]
+include = ["wcps_auth", "wcps_auth.*"]
 
 [project.scripts]
 wcps-auth = "wcps_auth.cli:run"
